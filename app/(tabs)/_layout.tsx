@@ -29,8 +29,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Activity',
+          tabBarIcon: ({ color }) => <TabBarIcon name="ambulance" color={color} />,
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable>
@@ -48,10 +48,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="record"
+        options={{
+          title: 'Record',
+          tabBarIcon: ({ color }) => <TabBarIcon name="plus-square" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="two"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Goals',
+          tabBarIcon: ({ color }) => <TabBarIcon name="star" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
     </Tabs>
