@@ -23,9 +23,12 @@ export default function RecordScreen() {
 
     bleManager.current.setOnDataReceived((data) => {
       console.log('📊 Data received in RecordScreen:', data);
-      setCurrentBleData(data);
-      if (isWorkoutActive) {
-        setWorkoutData(prev => [...prev, data]);
+      // Only update if we have non-zero values
+      if (data.heartRate > 0 || data.calories > 0 || data.stepCount > 0) {
+        setCurrentBleData(data);
+        if (isWorkoutActive) {
+          setWorkoutData(prev => [...prev, data]);
+        }
       }
     });
 
@@ -212,8 +215,8 @@ export default function RecordScreen() {
                   <Text style={styles.dataLabel}>❤️ Heart Rate (bpm)</Text>
                 </View>
                 <View style={styles.dataItem}>
-                  <Text style={styles.dataValue}>{currentBleData.calories}</Text>
-                  <Text style={styles.dataLabel}>🔥 Calories</Text>
+                  <Text style={styles.dataValue}>{currentBleData.calories.toFixed(2)}</Text>
+                  <Text style={styles.dataLabel}>🔥 Calories (kcal)</Text>
                 </View>
               </View>
 

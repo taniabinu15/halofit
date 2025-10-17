@@ -175,7 +175,43 @@ export class HaloFitBLEManager {
       const decoded = Buffer.from(base64Value, 'base64').toString('utf-8');
       console.log('📨 Received data:', decoded);
 
-      // Try parsing as JSON first
+      // Skip if the data is empty, battery message, or just whitespace/newlines
+      if (!decoded || decoded.trim() === '' || decoded.includes('Battery:') || decoded === '\n') {
+        console.log('📝 Skipping empty or battery data');
+        return;
+      }
+
+      // Try parsing for format: "BPM: 103 | Calories: 62.15 kcal | Steps: 8"
+      if (decoded.includes('BPM:')) {
+        // Split by | and clean up each part
+        const parts = decoded.split('|').map(part => part.trim());
+        
+        // Extract numeric values using regex
+        const bpmPart = parts[0]?.match(/BPM:\s*(\d+)/);
+        const caloriesPart = parts[1]?.match(/Calories:\s*(\d+\.?\d*)/);
+        const stepsPart = parts[2]?.match(/Steps:\s*(\d+)/);
+        
+        console.log('🔍 Parsed parts:', { bpmPart, caloriesPart, stepsPart });
+
+        const heartRate = bpmPart ? parseInt(bpmPart[1]) : null;
+        const calories = caloriesPart ? parseFloat(caloriesPart[1]) : null;
+        const steps = stepsPart ? parseInt(stepsPart[1]) : null;
+        
+        // Only send data if we have valid values
+        if (heartRate !== null || calories !== null || steps !== null) {
+          const data: BLEData = {
+            heartRate: heartRate ?? 0,
+            calories: calories ?? 0,
+            stepCount: steps ?? 0,
+            timestamp: Date.now(),
+          };
+          console.log('📊 Parsed data:', data);
+          this.onDataCallback?.(data);
+        }
+        return;
+      }
+
+      // Try parsing as JSON as fallback
       try {
         const json = JSON.parse(decoded);
         const data: BLEData = {
@@ -186,20 +222,11 @@ export class HaloFitBLEManager {
         };
         console.log('📊 Parsed data:', data);
         this.onDataCallback?.(data);
-      } catch {
-        // Try CSV format: "HR:75,CAL:120,STEPS:1500"
-        const parts = decoded.split(',');
-        const data: BLEData = {
-          heartRate: parseInt(parts[0]?.split(':')[1]) || 0,
-          calories: parseInt(parts[1]?.split(':')[1]) || 0,
-          stepCount: parseInt(parts[2]?.split(':')[1]) || 0,
-          timestamp: Date.now(),
-        };
-        console.log('📊 Parsed data (CSV):', data);
-        this.onDataCallback?.(data);
+      } catch (error) {
+        console.log('❌ JSON parse error:', error);
       }
     } catch (error) {
-      console.log('❌ Parse error:', error);
+      console.log('❌ Base64 decode error:', error);
     }
   }
 
@@ -224,7 +251,7 @@ export class HaloFitBLEManager {
     return this.device !== null;
   }
 
-  destroy() {
+  destroy(): void {
     console.log('🗑️ Destroying BLE manager...');
     if (this.subscription) {
       this.subscription.remove();
