@@ -1,367 +1,365 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-interface WorkoutType {
-  id: string;
-  name: string;
-  duration: string;
-  calories: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  description: string;
-}
-
-const workoutTypes: WorkoutType[] = [
-  {
-    id: '1',
-    name: 'Full Body Strength',
-    duration: '45-60 min',
-    calories: '400-500 kcal',
-    icon: 'barbell',
-    color: '#3b82f6',
-    description: 'Complete strength training workout'
-  },
-  {
-    id: '2',
-    name: 'HIIT Cardio',
-    duration: '30-45 min',
-    calories: '350-450 kcal',
-    icon: 'flash',
-    color: '#f97316',
-    description: 'High-intensity interval training'
-  },
-  {
-    id: '3',
-    name: 'Endurance Run',
-    duration: '45-90 min',
-    calories: '400-600 kcal',
-    icon: 'walk',
-    color: '#22c55e',
-    description: 'Long-distance cardiovascular training'
-  },
-  {
-    id: '4',
-    name: 'Yoga Flow',
-    duration: '30-60 min',
-    calories: '200-300 kcal',
-    icon: 'leaf',
-    color: '#8b5cf6',
-    description: 'Flexibility and mindfulness practice'
-  },
-  {
-    id: '5',
-    name: 'Cycling',
-    duration: '45-75 min',
-    calories: '350-500 kcal',
-    icon: 'bicycle',
-    color: '#06b6d4',
-    description: 'Indoor or outdoor cycling workout'
-  },
-  {
-    id: '6',
-    name: 'Boxing',
-    duration: '30-45 min',
-    calories: '400-550 kcal',
-    icon: 'fitness',
-    color: '#dc2626',
-    description: 'High-intensity boxing training'
-  },
-];
-
-const WorkoutCard = ({ workout, onPress }: { workout: WorkoutType; onPress: () => void }) => (
-  <TouchableOpacity style={styles.workoutCard} onPress={onPress}>
-    <View style={[styles.workoutIcon, { backgroundColor: workout.color }]}>
-      <Ionicons name={workout.icon} size={24} color="#fff" />
-    </View>
-    <View style={styles.workoutInfo}>
-      <Text style={styles.workoutName}>{workout.name}</Text>
-      <Text style={styles.workoutDescription}>{workout.description}</Text>
-      <View style={styles.workoutStats}>
-        <View style={styles.workoutStat}>
-          <Ionicons name="time-outline" size={14} color="#6b7280" />
-          <Text style={styles.workoutStatText}>{workout.duration}</Text>
-        </View>
-        <View style={styles.workoutStat}>
-          <Ionicons name="flame-outline" size={14} color="#6b7280" />
-          <Text style={styles.workoutStatText}>{workout.calories}</Text>
-        </View>
-      </View>
-    </View>
-    <Ionicons name="chevron-forward" size={20} color="#6b7280" />
-  </TouchableOpacity>
-);
+// RecordScreen.tsx - REWRITTEN FOR SIMPLICITY
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, Button, StyleSheet, ScrollView, Alert } from 'react-native';
+import { HaloFitBLEManager, BLEData } from './HaloFitBLE';
+import { useWorkoutData, WorkoutSession } from './WorkoutDataContext';
 
 export default function RecordScreen() {
-  const insets = useSafeAreaInsets();
-  const [isRecording, setIsRecording] = useState(false);
+  const [isWorkoutActive, setIsWorkoutActive] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isPairing, setIsPairing] = useState(false);
+  const [currentBleData, setCurrentBleData] = useState<BLEData | null>(null);
+  const [workoutData, setWorkoutData] = useState<BLEData[]>([]);
+  const [workoutStartTime, setWorkoutStartTime] = useState<number>(0);
+  const [elapsedTime, setElapsedTime] = useState<number>(0);
+  
+  const bleManager = useRef(new HaloFitBLEManager());
+  const timerInterval = useRef<number | null>(null);
+  const { saveWorkout } = useWorkoutData();
 
-  const handleStartWorkout = (workout: WorkoutType) => {
-    Alert.alert(
-      'Start Workout',
-      `Ready to start ${workout.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Start', 
-          onPress: () => {
-            setIsRecording(true);
-            Alert.alert('Workout Started!', `${workout.name} is now recording.`);
-          }
-        }
-      ]
-    );
+  // Setup BLE callbacks once
+  useEffect(() => {
+    console.log('🎬 RecordScreen mounted');
+
+    bleManager.current.setOnDataReceived((data) => {
+      console.log('📊 Data received in RecordScreen:', data);
+      setCurrentBleData(data);
+      if (isWorkoutActive) {
+        setWorkoutData(prev => [...prev, data]);
+      }
+    });
+
+    bleManager.current.setOnConnectionChange((connected) => {
+      console.log('🔌 Connection changed:', connected);
+      setIsConnected(connected);
+      setIsPairing(false);
+
+      if (connected) {
+        Alert.alert('✅ Connected!', 'HaloFit Headband is ready to track your workout.');
+      }
+    });
+
+    return () => {
+      console.log('🛑 RecordScreen unmounting');
+      if (timerInterval.current) {
+        clearInterval(timerInterval.current);
+      }
+      bleManager.current.destroy();
+    };
+  }, []);
+
+  // Monitor connection during workout
+  useEffect(() => {
+    if (isWorkoutActive && !isConnected) {
+      Alert.alert(
+        '⚠️ Connection Lost',
+        'Lost connection to HaloFit Headband during workout.',
+        [
+          { text: 'Stop Workout', onPress: handleStopWorkout, style: 'destructive' },
+          { text: 'Reconnect', onPress: handlePairDevice }
+        ]
+      );
+    }
+  }, [isConnected, isWorkoutActive]);
+
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleQuickStart = () => {
-    Alert.alert(
-      'Quick Start',
-      'Start a general workout session?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Start', 
-          onPress: () => {
-            setIsRecording(true);
-            Alert.alert('Quick Workout Started!', 'General workout is now recording.');
-          }
-        }
-      ]
-    );
+  const handlePairDevice = async () => {
+    console.log('🔵 Pair button pressed');
+    setIsPairing(true);
+
+    const success = await bleManager.current.connect();
+    
+    if (!success) {
+      setIsPairing(false);
+      Alert.alert('❌ Connection Failed', 'Could not connect to HaloFit Headband. Please ensure it is powered on and in range.');
+    }
+    // If successful, the onConnectionChange callback will handle UI updates
+  };
+
+  const handleStartWorkout = () => {
+    if (!isConnected) {
+      Alert.alert('❌ Not Connected', 'Please pair with HaloFit Headband first.');
+      return;
+    }
+
+    console.log('▶️ Starting workout');
+    setIsWorkoutActive(true);
+    setWorkoutData([]);
+    setElapsedTime(0);
+
+    const startTime = Date.now();
+    setWorkoutStartTime(startTime);
+
+    timerInterval.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(elapsed);
+    }, 1000) as any;
+
+    Alert.alert('▶️ Workout Started', 'Tracking your activity now!');
+  };
+
+  const handleStopWorkout = async () => {
+    console.log('⏹️ Stopping workout');
+    
+    if (timerInterval.current) {
+      clearInterval(timerInterval.current);
+      timerInterval.current = null;
+    }
+
+    const endTime = Date.now();
+    const duration = elapsedTime;
+
+    if (workoutData.length > 0 && currentBleData) {
+      const heartRates = workoutData.filter(d => d.heartRate > 0).map(d => d.heartRate);
+      const avgHeartRate = heartRates.length > 0
+        ? Math.round(heartRates.reduce((sum, hr) => sum + hr, 0) / heartRates.length)
+        : 0;
+
+      const workoutSession: WorkoutSession = {
+        id: `workout_${endTime}`,
+        startTime: workoutStartTime,
+        endTime: endTime,
+        duration: duration,
+        dataPoints: workoutData,
+        finalHeartRate: currentBleData.heartRate,
+        finalCalories: currentBleData.calories,
+        finalStepCount: currentBleData.stepCount,
+        avgHeartRate: avgHeartRate,
+      };
+
+      await saveWorkout(workoutSession);
+      
+      Alert.alert(
+        '✅ Workout Complete!',
+        `Duration: ${formatTime(duration)}\n` +
+        `Calories: ${currentBleData.calories} kcal\n` +
+        `Steps: ${currentBleData.stepCount}\n` +
+        `Avg HR: ${avgHeartRate} bpm`
+      );
+    } else {
+      Alert.alert('⏹️ Workout Ended', 'No data was collected.');
+    }
+
+    setIsWorkoutActive(false);
+    setWorkoutData([]);
+    setElapsedTime(0);
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Record Workout</Text>
-        <Text style={styles.headerSubtitle}>Choose your workout type</Text>
+        <Text style={styles.title}>🏃‍♂️ Workout Session</Text>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Quick Start Button */}
-        <View style={styles.quickStartContainer}>
-          <TouchableOpacity 
-            style={[styles.quickStartButton, isRecording && styles.quickStartButtonActive]}
-            onPress={handleQuickStart}
-          >
-            <View style={styles.quickStartContent}>
-              <Ionicons 
-                name={isRecording ? "stop-circle" : "play-circle"} 
-                size={32} 
-                color={isRecording ? "#dc2626" : "#ffffff"} 
-              />
-              <View style={styles.quickStartText}>
-                <Text style={[styles.quickStartTitle, isRecording && styles.quickStartTitleActive]}>
-                  {isRecording ? 'Stop Recording' : 'Quick Start'}
-                </Text>
-                <Text style={[styles.quickStartSubtitle, isRecording && styles.quickStartSubtitleActive]}>
-                  {isRecording ? 'Tap to end workout' : 'Start a general workout'}
-                </Text>
+      {/* Connection Status */}
+      <View style={styles.statusContainer}>
+        <Text style={styles.statusLabel}>Device Status:</Text>
+        <View style={[
+          styles.statusIndicator,
+          { backgroundColor: isPairing ? '#FFA726' : (isConnected ? '#4CAF50' : '#FF5252') }
+        ]} />
+        <Text style={styles.statusText}>
+          {isPairing ? '🔍 Searching...' : (isConnected ? '✅ Connected' : '❌ Disconnected')}
+        </Text>
+      </View>
+
+      {/* Pair Button */}
+      <View style={styles.buttonContainer}>
+        <Button
+          title={isPairing ? 'Searching for Device...' : '🔗 Pair HaloFit Headband'}
+          onPress={handlePairDevice}
+          disabled={isPairing || isConnected}
+          color="#2196F3"
+        />
+      </View>
+
+      {/* Workout Controls */}
+      {isConnected && !isWorkoutActive && (
+        <View style={styles.buttonContainer}>
+          <Button
+            title="▶️ Start Workout"
+            onPress={handleStartWorkout}
+            color="#4CAF50"
+          />
+        </View>
+      )}
+
+      {isWorkoutActive && (
+        <>
+          {/* Timer */}
+          <View style={styles.timerContainer}>
+            <Text style={styles.timerLabel}>Duration</Text>
+            <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
+          </View>
+
+          {/* Live Data */}
+          {currentBleData && (
+            <View style={styles.dataContainer}>
+              <Text style={styles.dataTitle}>📊 Live Data</Text>
+              
+              <View style={styles.dataRow}>
+                <View style={styles.dataItem}>
+                  <Text style={styles.dataValue}>{currentBleData.heartRate}</Text>
+                  <Text style={styles.dataLabel}>❤️ Heart Rate (bpm)</Text>
+                </View>
+                <View style={styles.dataItem}>
+                  <Text style={styles.dataValue}>{currentBleData.calories}</Text>
+                  <Text style={styles.dataLabel}>🔥 Calories</Text>
+                </View>
+              </View>
+
+              <View style={styles.dataRow}>
+                <View style={styles.dataItem}>
+                  <Text style={styles.dataValue}>{currentBleData.stepCount}</Text>
+                  <Text style={styles.dataLabel}>👟 Steps</Text>
+                </View>
+                <View style={styles.dataItem}>
+                  <Text style={styles.dataValue}>{workoutData.length}</Text>
+                  <Text style={styles.dataLabel}>📈 Data Points</Text>
+                </View>
               </View>
             </View>
-          </TouchableOpacity>
-        </View>
+          )}
 
-        {/* Workout Types */}
-        <View style={styles.workoutTypesContainer}>
-          <Text style={styles.sectionTitle}>Workout Types</Text>
-          <View style={styles.workoutsList}>
-            {workoutTypes.map((workout) => (
-              <WorkoutCard
-                key={workout.id}
-                workout={workout}
-                onPress={() => handleStartWorkout(workout)}
-              />
-            ))}
+          {/* Stop Button */}
+          <View style={styles.buttonContainer}>
+            <Button
+              title="⏹️ Stop Workout"
+              onPress={handleStopWorkout}
+              color="#F44336"
+            />
           </View>
-        </View>
+        </>
+      )}
 
-        {/* Recent Templates */}
-        <View style={styles.templatesContainer}>
-          <Text style={styles.sectionTitle}>Recent Templates</Text>
-          <View style={styles.templatesList}>
-            <TouchableOpacity style={styles.templateItem}>
-              <View style={styles.templateIcon}>
-                <Ionicons name="bookmark" size={20} color="#6b7280" />
-              </View>
-              <View style={styles.templateInfo}>
-                <Text style={styles.templateName}>Morning Routine</Text>
-                <Text style={styles.templateDescription}>Full body + cardio mix</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#6b7280" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.templateItem}>
-              <View style={styles.templateIcon}>
-                <Ionicons name="bookmark" size={20} color="#6b7280" />
-              </View>
-              <View style={styles.templateInfo}>
-                <Text style={styles.templateName}>Evening Burn</Text>
-                <Text style={styles.templateDescription}>HIIT + strength combo</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#6b7280" />
-            </TouchableOpacity>
-          </View>
+      {/* Debug Info */}
+      {__DEV__ && (
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugText}>
+            Connected: {isConnected ? 'Yes' : 'No'} | 
+            Workout: {isWorkoutActive ? 'Active' : 'Inactive'} | 
+            Data Points: {workoutData.length}
+          </Text>
         </View>
-      </ScrollView>
-    </View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
+    padding: 20,
+    backgroundColor: '#f5f5f5',
   },
   header: {
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  quickStartContainer: {
-    padding: 16,
-  },
-  quickStartButton: {
-    backgroundColor: '#000000',
-    borderRadius: 16,
-    padding: 20,
-  },
-  quickStartButtonActive: {
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: '#dc2626',
-  },
-  quickStartContent: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    marginBottom: 20,
   },
-  quickStartText: {
-    flex: 1,
-  },
-  quickStartTitle: {
-    fontSize: 20,
+  title: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#333',
   },
-  quickStartTitleActive: {
-    color: '#dc2626',
-  },
-  quickStartSubtitle: {
-    fontSize: 14,
-    color: '#ffffff',
-    opacity: 0.8,
-    marginTop: 2,
-  },
-  quickStartSubtitleActive: {
-    color: '#6b7280',
-  },
-  workoutTypesContainer: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 16,
-  },
-  workoutsList: {
-    gap: 12,
-  },
-  workoutCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+  statusContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  workoutIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 15,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginBottom: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  workoutInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  workoutName: {
+  statusLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    marginRight: 10,
   },
-  workoutDescription: {
-    fontSize: 14,
-    color: '#6b7280',
+  statusIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
   },
-  workoutStats: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 4,
+  statusText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
-  workoutStat: {
-    flexDirection: 'row',
+  buttonContainer: {
+    marginVertical: 10,
+  },
+  timerContainer: {
     alignItems: 'center',
-    gap: 4,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginVertical: 15,
+    elevation: 2,
   },
-  workoutStatText: {
-    fontSize: 12,
-    color: '#6b7280',
+  timerLabel: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 5,
   },
-  templatesContainer: {
-    padding: 16,
+  timerText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#2196F3',
   },
-  templatesList: {
-    gap: 8,
+  dataContainer: {
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginVertical: 15,
+    elevation: 2,
   },
-  templateItem: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 12,
+  dataTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  dataRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-around',
+    marginVertical: 10,
   },
-  templateIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+  dataItem: {
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  templateInfo: {
     flex: 1,
   },
-  templateName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#000',
+  dataValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333',
   },
-  templateDescription: {
+  dataLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  debugContainer: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#ffe082',
+    borderRadius: 5,
+  },
+  debugText: {
     fontSize: 12,
-    color: '#6b7280',
+    fontFamily: 'monospace',
   },
 });

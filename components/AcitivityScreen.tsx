@@ -1,292 +1,228 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-interface ActivityData {
-  date: string;
-  workouts: number;
-  calories: number;
-  duration: number;
-  splatPoints: number;
-}
-
-const weeklyData: ActivityData[] = [
-  { date: 'Mon', workouts: 1, calories: 485, duration: 60, splatPoints: 18 },
-  { date: 'Tue', workouts: 0, calories: 0, duration: 0, splatPoints: 0 },
-  { date: 'Wed', workouts: 1, calories: 420, duration: 45, splatPoints: 22 },
-  { date: 'Thu', workouts: 1, calories: 398, duration: 60, splatPoints: 15 },
-  { date: 'Fri', workouts: 0, calories: 0, duration: 0, splatPoints: 0 },
-  { date: 'Sat', workouts: 1, calories: 512, duration: 75, splatPoints: 25 },
-  { date: 'Sun', workouts: 1, calories: 456, duration: 50, splatPoints: 20 },
-];
-
-const StatCard = ({ title, value, unit, icon, color }: {
-  title: string;
-  value: string;
-  unit?: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-}) => (
-  <View style={styles.statCard}>
-    <View style={[styles.statIcon, { backgroundColor: color }]}>
-      <Ionicons name={icon} size={24} color="#fff" />
-    </View>
-    <Text style={styles.statTitle}>{title}</Text>
-    <View style={styles.statValueContainer}>
-      <Text style={styles.statValue}>{value}</Text>
-      {unit && <Text style={styles.statUnit}>{unit}</Text>}
-    </View>
-  </View>
-);
+// ActivityScreen.tsx
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { useWorkoutData } from './WorkoutDataContext';
 
 export default function ActivityScreen() {
-  const insets = useSafeAreaInsets();
-  
-  const totalWorkouts = weeklyData.reduce((sum, day) => sum + day.workouts, 0);
-  const totalCalories = weeklyData.reduce((sum, day) => sum + day.calories, 0);
-  const totalDuration = weeklyData.reduce((sum, day) => sum + day.duration, 0);
-  const totalSplatPoints = weeklyData.reduce((sum, day) => sum + day.splatPoints, 0);
+  const { workoutStats, refreshStats } = useWorkoutData();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshStats();
+    setRefreshing(false);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Activity</Text>
-        <Text style={styles.headerSubtitle}>Your weekly summary</Text>
+        <Text style={styles.headerTitle}>Activity Dashboard</Text>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Weekly Summary Cards */}
-        <View style={styles.summaryGrid}>
-          <StatCard
-            title="Workouts"
-            value={totalWorkouts.toString()}
-            icon="fitness"
-            color="#3b82f6"
-          />
-          <StatCard
-            title="Calories"
-            value={totalCalories.toLocaleString()}
-            unit="kcal"
-            icon="flame"
-            color="#f97316"
-          />
-          <StatCard
-            title="Duration"
-            value={Math.round(totalDuration / 60).toString()}
-            unit="hrs"
-            icon="time"
-            color="#22c55e"
-          />
-          <StatCard
-            title="Step Points"
-            value={totalSplatPoints.toString()}
-            icon="trophy"
-            color="#8b5cf6"
-          />
+      {/* Last Workout Summary */}
+      {workoutStats.lastWorkout && (
+        <View style={styles.lastWorkoutCard}>
+          <Text style={styles.cardTitle}>Last Workout</Text>
+          <Text style={styles.lastWorkoutDate}>
+            {formatDate(workoutStats.lastWorkout.endTime)}
+          </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {formatDuration(workoutStats.lastWorkout.duration)}
+              </Text>
+              <Text style={styles.statLabel}>Duration</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {workoutStats.lastWorkout.finalCalories}
+              </Text>
+              <Text style={styles.statLabel}>Calories</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {workoutStats.lastWorkout.finalStepCount}
+              </Text>
+              <Text style={styles.statLabel}>Steps</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Overall Stats Grid */}
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <Text style={styles.statCardValue}>{workoutStats.totalWorkouts}</Text>
+          <Text style={styles.statCardLabel}>Total Workouts</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <Text style={styles.statCardValue}>
+            {formatDuration(workoutStats.totalDuration)}
+          </Text>
+          <Text style={styles.statCardLabel}>Total Duration</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <Text style={styles.statCardValue}>
+            {workoutStats.totalCalories}
+          </Text>
+          <Text style={styles.statCardLabel}>Total Calories</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <Text style={styles.statCardValue}>
+            {workoutStats.avgHeartRate}
+          </Text>
+          <Text style={styles.statCardLabel}>Avg Heart Rate</Text>
         </View>
 
-        {/* Weekly Activity Chart */}
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>This Week</Text>
-          <View style={styles.chart}>
-            {weeklyData.map((day, index) => (
-              <View key={index} style={styles.chartDay}>
-                <View style={styles.chartBarContainer}>
-                  <View 
-                    style={[
-                      styles.chartBar,
-                      { 
-                        height: day.workouts > 0 ? `${(day.calories / 600) * 100}%` : 4,
-                        backgroundColor: day.workouts > 0 ? '#ffc0cb' : '#e5e7eb'
-                      }
-                    ]} 
-                  />
-                </View>
-                <Text style={styles.chartDayLabel}>{day.date}</Text>
-              </View>
-            ))}
-          </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statCardValue}>
+            {workoutStats.totalSteps.toLocaleString()}
+          </Text>
+          <Text style={styles.statCardLabel}>Total Steps</Text>
         </View>
+      </View>
 
-        {/* Goals Section */}
-        <View style={styles.goalsContainer}>
-          <Text style={styles.goalsTitle}>Weekly Goals</Text>
-          <View style={styles.goalItem}>
-            <View style={styles.goalInfo}>
-              <Ionicons name="fitness" size={20} color="#3b82f6" />
-              <Text style={styles.goalLabel}>Workout Days</Text>
-            </View>
-            <Text style={styles.goalProgress}>5/7 days</Text>
-          </View>
-          <View style={styles.goalItem}>
-            <View style={styles.goalInfo}>
-              <Ionicons name="flame" size={20} color="#f97316" />
-              <Text style={styles.goalLabel}>Calories Burned</Text>
-            </View>
-            <Text style={styles.goalProgress}>2,271/3,000 kcal</Text>
-          </View>
-          <View style={styles.goalItem}>
-            <View style={styles.goalInfo}>
-              <Ionicons name="trophy" size={20} color="#8b5cf6" />
-              <Text style={styles.goalLabel}>Step Points</Text>
-            </View>
-            <Text style={styles.goalProgress}>100/140 points</Text>
-          </View>
+      {workoutStats.totalWorkouts === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>No workouts yet!</Text>
+          <Text style={styles.emptyStateSubtext}>
+            Start your first workout to see your stats here
+          </Text>
         </View>
-      </ScrollView>
-    </View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f8f9fa',
   },
   header: {
-    padding: 16,
-    backgroundColor: '#ffffff',
+    padding: 20,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#e0e0e0',
   },
   headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  lastWorkoutCard: {
+    margin: 15,
+    padding: 20,
+    backgroundColor: '#4CAF50',
+    borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.9,
+    marginBottom: 5,
+  },
+  lastWorkoutDate: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.8,
+    marginBottom: 15,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#fff',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
+  statLabel: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.9,
+    marginTop: 5,
   },
-  scrollView: {
-    flex: 1,
-  },
-  summaryGrid: {
+  statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 16,
-    gap: 16,
+    padding: 10,
   },
   statCard: {
     width: '47%',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+    margin: '1.5%',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 15,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 4,
     elevation: 2,
   },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  statCardValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  statCardLabel: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    padding: 40,
+    marginTop: 50,
   },
-  statTitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  statValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  statValue: {
+  emptyStateText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  statUnit: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  chartContainer: {
-    margin: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  chartTitle: {
-    fontSize: 18,
     fontWeight: '600',
-    color: '#000',
-    marginBottom: 16,
+    color: '#666',
+    marginBottom: 10,
   },
-  chart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 120,
-  },
-  chartDay: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  chartBarContainer: {
-    height: 80,
-    justifyContent: 'flex-end',
-    width: 20,
-  },
-  chartBar: {
-    width: '100%',
-    borderRadius: 2,
-    minHeight: 4,
-  },
-  chartDayLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  goalsContainer: {
-    margin: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  goalsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 16,
-  },
-  goalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  goalInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  goalLabel: {
+  emptyStateSubtext: {
     fontSize: 16,
-    color: '#000',
-  },
-  goalProgress: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
+    color: '#999',
+    textAlign: 'center',
   },
 });
