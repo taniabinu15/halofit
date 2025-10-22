@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BLEData } from './HaloFitBLE';
+import { initFirebaseAuth, saveWorkoutToFirebase, syncLocalWorkoutsToFirebase } from '../services/firebaseService';
 
 export interface WorkoutSession {
   id: string;
@@ -29,6 +30,8 @@ interface WorkoutDataContextType {
   workoutHistory: WorkoutSession[];
   saveWorkout: (session: WorkoutSession) => Promise<void>;
   refreshStats: () => Promise<void>;
+  isFirebaseReady: boolean;
+  syncToFirebase: () => Promise<void>;
 }
 
 const WorkoutDataContext = createContext<WorkoutDataContextType | undefined>(undefined);
@@ -44,10 +47,28 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
     totalSteps: 0,
     avgHeartRate: 0,
   });
+  const [isFirebaseReady, setIsFirebaseReady] = useState(false);
 
   useEffect(() => {
     loadWorkouts();
+    initializeFirebase();
   }, []);
+
+  const initializeFirebase = async () => {
+    try {
+      const user = await initFirebaseAuth();
+      if (user) {
+        console.log('✅ Firebase initialized successfully');
+        setIsFirebaseReady(true);
+      } else {
+        console.warn('⚠️ Firebase initialization failed');
+        setIsFirebaseReady(false);
+      }
+    } catch (error) {
+      console.error('❌ Error initializing Firebase:', error);
+      setIsFirebaseReady(false);
+    }
+  };
 
   const loadWorkouts = async () => {
     try {
@@ -95,15 +116,39 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const saveWorkout = async (session: WorkoutSession) => {
     try {
+      // Save locally first
       const updatedHistory = [...workoutHistory, session];
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedHistory));
       setWorkoutHistory(updatedHistory);
       calculateStats(updatedHistory);
-      console.log('Workout saved successfully');
+      console.log('✅ Workout saved locally');
+
+      // Then save to Firebase
+      if (isFirebaseReady) {
+        const firebaseSuccess = await saveWorkoutToFirebase(session);
+        if (firebaseSuccess) {
+          console.log('✅ Workout synced to Firebase');
+        } else {
+          console.warn('⚠️ Firebase sync failed, data saved locally only');
+        }
+      } else {
+        console.warn('⚠️ Firebase not ready, workout saved locally only');
+      }
     } catch (error) {
-      console.error('Failed to save workout:', error);
+      console.error('❌ Failed to save workout:', error);
       throw error;
     }
+  };
+
+  const syncToFirebase = async () => {
+    if (!isFirebaseReady) {
+      console.warn('⚠️ Firebase not ready for sync');
+      return;
+    }
+
+    console.log('🔄 Starting Firebase sync...');
+    const syncedCount = await syncLocalWorkoutsToFirebase(workoutHistory);
+    console.log(`✅ Synced ${syncedCount} workouts to Firebase`);
   };
 
   const refreshStats = async () => {
@@ -111,7 +156,7 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   return (
-    <WorkoutDataContext.Provider value={{ workoutStats, workoutHistory, saveWorkout, refreshStats }}>
+    <WorkoutDataContext.Provider value={{ workoutStats, workoutHistory, saveWorkout, refreshStats, isFirebaseReady, syncToFirebase }}>
       {children}
     </WorkoutDataContext.Provider>
   );

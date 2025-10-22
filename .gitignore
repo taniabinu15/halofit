@@ -39,3 +39,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Firebase credentials - DO NOT COMMIT
+google-services.json
+GoogleService-Info.plist
+ios/halofit/GoogleService-Info.plist
+android/app/google-services.json

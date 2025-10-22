@@ -15,19 +15,25 @@ export default function RecordScreen() {
   
   const bleManager = useRef(new HaloFitBLEManager());
   const timerInterval = useRef<number | null>(null);
-  const { saveWorkout } = useWorkoutData();
+  const isWorkoutActiveRef = useRef(false); // Track workout state for BLE callback
+  const { saveWorkout, isFirebaseReady } = useWorkoutData();
 
   // Setup BLE callbacks once
   useEffect(() => {
     console.log('🎬 RecordScreen mounted');
+    console.log(`🔥 Firebase Ready: ${isFirebaseReady}`);
 
     bleManager.current.setOnDataReceived((data) => {
       console.log('📊 Data received in RecordScreen:', data);
       // Only update if we have non-zero values
       if (data.heartRate > 0 || data.calories > 0 || data.stepCount > 0) {
         setCurrentBleData(data);
-        if (isWorkoutActive) {
+        // Use ref to get current workout state (avoids stale closure)
+        if (isWorkoutActiveRef.current) {
+          console.log('✅ Adding data point to workout');
           setWorkoutData(prev => [...prev, data]);
+        } else {
+          console.log('⏸️ Workout not active, skipping data save');
         }
       }
     });
@@ -96,6 +102,7 @@ export default function RecordScreen() {
 
     console.log('▶️ Starting workout');
     setIsWorkoutActive(true);
+    isWorkoutActiveRef.current = true; // Update ref for BLE callback
     setWorkoutData([]);
     setElapsedTime(0);
 
@@ -112,6 +119,10 @@ export default function RecordScreen() {
 
   const handleStopWorkout = async () => {
     console.log('⏹️ Stopping workout');
+    console.log(`🔥 Firebase status before save: ${isFirebaseReady ? 'READY' : 'NOT READY'}`);
+    console.log(`📊 Workout data points collected: ${workoutData.length}`);
+    console.log(`💓 Current BLE data:`, currentBleData);
+    console.log(`⏱️ Elapsed time: ${elapsedTime} seconds`);
     
     if (timerInterval.current) {
       clearInterval(timerInterval.current);
@@ -139,20 +150,29 @@ export default function RecordScreen() {
         avgHeartRate: avgHeartRate,
       };
 
+      console.log('💾 Calling saveWorkout...');
       await saveWorkout(workoutSession);
+      console.log('✅ saveWorkout completed');
+      
+      const firebaseStatus = isFirebaseReady ? '🔥 Synced to cloud' : '📱 Saved locally only';
       
       Alert.alert(
         '✅ Workout Complete!',
         `Duration: ${formatTime(duration)}\n` +
         `Calories: ${currentBleData.calories} kcal\n` +
         `Steps: ${currentBleData.stepCount}\n` +
-        `Avg HR: ${avgHeartRate} bpm`
+        `Avg HR: ${avgHeartRate} bpm\n\n` +
+        firebaseStatus
       );
     } else {
+      console.log('❌ No workout data to save!');
+      console.log(`   - workoutData.length: ${workoutData.length}`);
+      console.log(`   - currentBleData:`, currentBleData);
       Alert.alert('⏹️ Workout Ended', 'No data was collected.');
     }
 
     setIsWorkoutActive(false);
+    isWorkoutActiveRef.current = false; // Update ref for BLE callback
     setWorkoutData([]);
     setElapsedTime(0);
   };
