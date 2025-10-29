@@ -235,7 +235,7 @@ export default function RecordScreen() {
                   <Text style={styles.dataLabel}>❤️ Heart Rate (bpm)</Text>
                 </View>
                 <View style={styles.dataItem}>
-                  <Text style={styles.dataValue}>{currentBleData.calories.toFixed(2)}</Text>
+                  <Text style={styles.dataValue}>{Math.round(currentBleData.calories)}</Text>
                   <Text style={styles.dataLabel}>🔥 Calories (kcal)</Text>
                 </View>
               </View>

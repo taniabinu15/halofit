@@ -2,10 +2,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BLEData } from './HaloFitBLE';
-import { initFirebaseAuth, saveWorkoutToFirebase, syncLocalWorkoutsToFirebase } from '../services/firebaseService';
+import { initFirebaseAuth, saveWorkoutToFirebase, syncLocalWorkoutsToFirebase, fetchWorkoutsFromFirebase, updateWorkoutNameInFirebase, fetchGlobalStatsFromFirebase, fetchWeeklyWorkoutsFromAllUsers } from '../services/firebaseService';
 
 export interface WorkoutSession {
   id: string;
+  name?: string;              // Optional workout name
   startTime: number;
   endTime: number;
   duration: number; // in seconds
@@ -27,11 +28,16 @@ export interface WorkoutStats {
 
 interface WorkoutDataContextType {
   workoutStats: WorkoutStats;
+  globalStats: WorkoutStats;
   workoutHistory: WorkoutSession[];
+  weeklyWorkouts: WorkoutSession[];
   saveWorkout: (session: WorkoutSession) => Promise<void>;
   refreshStats: () => Promise<void>;
+  refreshGlobalStats: () => Promise<void>;
+  refreshWeeklyWorkouts: () => Promise<void>;
   isFirebaseReady: boolean;
   syncToFirebase: () => Promise<void>;
+  updateWorkoutName: (workoutId: string, newName: string) => Promise<void>;
 }
 
 const WorkoutDataContext = createContext<WorkoutDataContextType | undefined>(undefined);
@@ -40,7 +46,15 @@ const STORAGE_KEY = '@halofit_workouts';
 
 export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutSession[]>([]);
+  const [weeklyWorkouts, setWeeklyWorkouts] = useState<WorkoutSession[]>([]);
   const [workoutStats, setWorkoutStats] = useState<WorkoutStats>({
+    totalWorkouts: 0,
+    totalDuration: 0,
+    totalCalories: 0,
+    totalSteps: 0,
+    avgHeartRate: 0,
+  });
+  const [globalStats, setGlobalStats] = useState<WorkoutStats>({
     totalWorkouts: 0,
     totalDuration: 0,
     totalCalories: 0,
@@ -60,6 +74,27 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (user) {
         console.log('✅ Firebase initialized successfully');
         setIsFirebaseReady(true);
+        // After Firebase is ready, fetch data from Firebase
+        const firebaseWorkouts = await fetchWorkoutsFromFirebase();
+        if (firebaseWorkouts.length > 0) {
+          console.log(`✅ Loaded ${firebaseWorkouts.length} workouts from Firebase on init`);
+          setWorkoutHistory(firebaseWorkouts);
+          calculateStats(firebaseWorkouts);
+          // Update local storage with Firebase data
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(firebaseWorkouts));
+        }
+        
+        // Load global stats on initialization
+        const stats = await fetchGlobalStatsFromFirebase();
+        if (stats) {
+          setGlobalStats(stats);
+          console.log('✅ Global stats loaded on init');
+        }
+        
+        // Load weekly workouts on initialization
+        const weeklyData = await fetchWeeklyWorkoutsFromAllUsers();
+        setWeeklyWorkouts(weeklyData);
+        console.log(`✅ Weekly workouts loaded on init: ${weeklyData.length} workouts`);
       } else {
         console.warn('⚠️ Firebase initialization failed');
         setIsFirebaseReady(false);
@@ -152,11 +187,83 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const refreshStats = async () => {
-    await loadWorkouts();
+    console.log('🔄 Refreshing workout data from Firebase...');
+    if (isFirebaseReady) {
+      // Fetch from Firebase
+      const firebaseWorkouts = await fetchWorkoutsFromFirebase();
+      if (firebaseWorkouts.length > 0) {
+        console.log(`✅ Loaded ${firebaseWorkouts.length} workouts from Firebase`);
+        setWorkoutHistory(firebaseWorkouts);
+        calculateStats(firebaseWorkouts);
+        // Also update local storage with Firebase data
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(firebaseWorkouts));
+      } else {
+        // Fallback to local storage if Firebase has no data
+        console.log('⚠️ No Firebase data, loading from local storage');
+        await loadWorkouts();
+      }
+    } else {
+      // Firebase not ready, load from local storage
+      console.log('⚠️ Firebase not ready, loading from local storage');
+      await loadWorkouts();
+    }
+  };
+
+  const updateWorkoutName = async (workoutId: string, newName: string) => {
+    try {
+      // Update locally
+      const updatedHistory = workoutHistory.map(workout =>
+        workout.id === workoutId ? { ...workout, name: newName } : workout
+      );
+      setWorkoutHistory(updatedHistory);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedHistory));
+      console.log('✅ Workout name updated locally');
+
+      // Update in Firebase
+      if (isFirebaseReady) {
+        const firebaseSuccess = await updateWorkoutNameInFirebase(workoutId, newName);
+        if (firebaseSuccess) {
+          console.log('✅ Workout name synced to Firebase');
+        } else {
+          console.warn('⚠️ Firebase sync failed for workout name');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to update workout name:', error);
+      throw error;
+    }
+  };
+
+  const refreshGlobalStats = async () => {
+    if (!isFirebaseReady) {
+      console.warn('⚠️ Firebase not ready, cannot fetch global stats');
+      return;
+    }
+
+    console.log('🌍 Fetching global stats from all users...');
+    const stats = await fetchGlobalStatsFromFirebase();
+    if (stats) {
+      setGlobalStats(stats);
+      console.log('✅ Global stats updated');
+    } else {
+      console.warn('⚠️ Failed to fetch global stats');
+    }
+  };
+
+  const refreshWeeklyWorkouts = async () => {
+    if (!isFirebaseReady) {
+      console.warn('⚠️ Firebase not ready, cannot fetch weekly workouts');
+      return;
+    }
+
+    console.log('📅 Fetching weekly workouts from all users...');
+    const workouts = await fetchWeeklyWorkoutsFromAllUsers();
+    setWeeklyWorkouts(workouts);
+    console.log(`✅ Weekly workouts updated: ${workouts.length} workouts`);
   };
 
   return (
-    <WorkoutDataContext.Provider value={{ workoutStats, workoutHistory, saveWorkout, refreshStats, isFirebaseReady, syncToFirebase }}>
+    <WorkoutDataContext.Provider value={{ workoutStats, globalStats, workoutHistory, weeklyWorkouts, saveWorkout, refreshStats, refreshGlobalStats, refreshWeeklyWorkouts, isFirebaseReady, syncToFirebase, updateWorkoutName }}>
       {children}
     </WorkoutDataContext.Provider>
   );

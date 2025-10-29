@@ -15,22 +15,33 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
-    // Users collection - users can only read/write their own data
+    // Users collection - users can read all data but only write their own
     match /users/{userId} {
-      // Allow read/write only to the authenticated user
-      allow read, write: if isAuthenticated() && isOwner(userId);
+      // Allow read to any authenticated user (for global stats)
+      // Allow write only to the document owner
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isOwner(userId);
       
       // Workouts subcollection
       match /workouts/{workoutId} {
-        // Allow read/write only to the user who owns the parent document
-        allow read, write: if isAuthenticated() && isOwner(userId);
+        // Allow read to any authenticated user (for global stats)
+        // Allow write only to the user who owns the parent document
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isOwner(userId);
         
         // Data points subcollection (nested under workouts)
         match /dataPoints/{dataPointId} {
-          // Allow read/write only to the user who owns the workout
-          allow read, write: if isAuthenticated() && isOwner(userId);
+          // Allow read to any authenticated user (for global stats)
+          // Allow write only to the user who owns the workout
+          allow read: if isAuthenticated();
+          allow write: if isAuthenticated() && isOwner(userId);
         }
       }
+    }
+    
+    // Allow collectionGroup queries for workouts (for global stats)
+    match /{path=**}/workouts/{workoutId} {
+      allow read: if isAuthenticated();
     }
     
     // Deny all other access by default

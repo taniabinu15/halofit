@@ -1,8 +1,7 @@
 // config/firebase.ts
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { initializeAuth, getAuth } from 'firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from 'firebase/auth';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -21,18 +20,7 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 // Initialize Firestore
 export const db = getFirestore(app);
 
-// Initialize Auth with AsyncStorage persistence for React Native
-let auth;
-try {
-  // Try to initialize with persistence
-  auth = initializeAuth(app, {
-    persistence: AsyncStorage as any // Using any to bypass type issues with web SDK
-  });
-} catch (error) {
-  // If already initialized, get existing instance
-  auth = getAuth(app);
-}
-
-export { auth };
+// Initialize Auth - Firebase JS SDK will handle persistence automatically in React Native
+export const auth = getAuth(app);
 
 export default app;

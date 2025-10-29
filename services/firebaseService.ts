@@ -9,7 +9,8 @@ import {
   where, 
   orderBy, 
   Timestamp,
-  serverTimestamp 
+  serverTimestamp,
+  collectionGroup
 } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import { db, auth } from '../config/firebase';
@@ -196,4 +197,235 @@ export const syncLocalWorkoutsToFirebase = async (
 
   console.log(`✅ Firebase: Synced ${syncedCount}/${localWorkouts.length} workouts`);
   return syncedCount;
+};
+
+// Update workout name in Firebase
+export const updateWorkoutNameInFirebase = async (
+  workoutId: string,
+  newName: string
+): Promise<boolean> => {
+  try {
+    const userId = getUserId();
+    if (!userId) {
+      console.warn('⚠️ Firebase: No user authenticated');
+      return false;
+    }
+
+    // Find the workout document by ID
+    const workoutsRef = collection(db, 'users', userId, 'workouts');
+    const q = query(workoutsRef, where('id', '==', workoutId));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      console.warn('⚠️ Firebase: Workout not found');
+      return false;
+    }
+
+    // Update the first matching document
+    const workoutDoc = querySnapshot.docs[0];
+    await setDoc(doc(db, 'users', userId, 'workouts', workoutDoc.id), {
+      name: newName,
+    }, { merge: true });
+
+    console.log('✅ Firebase: Workout name updated');
+    return true;
+  } catch (error) {
+    console.error('❌ Firebase: Error updating workout name:', error);
+    return false;
+  }
+};
+
+// Fetch global statistics from all users
+export const fetchGlobalStatsFromFirebase = async (): Promise<{
+  totalWorkouts: number;
+  totalDuration: number;
+  totalCalories: number;
+  totalSteps: number;
+  avgHeartRate: number;
+} | null> => {
+  try {
+    console.log('🌍 Firebase: Fetching global stats from all users...');
+    
+    // Use collectionGroup to query all workouts across all users
+    const workoutsQuery = query(collection(db, 'workouts'));
+    
+    // First try: Query using collection group (more efficient)
+    let allWorkouts: any[] = [];
+    
+    try {
+      // Try collection group approach
+      const workoutsRef = collectionGroup(db, 'workouts');
+      const workoutsSnapshot = await getDocs(workoutsRef);
+      allWorkouts = workoutsSnapshot.docs.map(doc => doc.data());
+      console.log(`📊 Found ${allWorkouts.length} total workouts using collectionGroup`);
+    } catch (collectionGroupError) {
+      console.log('⚠️ collectionGroup failed, falling back to manual user iteration');
+      
+      // Fallback: Manually query each user
+      const usersRef = collection(db, 'users');
+      const usersSnapshot = await getDocs(usersRef);
+      
+      console.log(`📊 Found ${usersSnapshot.docs.length} users in database`);
+      
+      // Iterate through each user
+      for (const userDoc of usersSnapshot.docs) {
+        const userId = userDoc.id;
+        console.log(`   Checking user: ${userId}`);
+        
+        // Query all workouts for this user
+        const workoutsRef = collection(db, 'users', userId, 'workouts');
+        const workoutsSnapshot = await getDocs(workoutsRef);
+        
+        console.log(`   - Found ${workoutsSnapshot.docs.length} workouts for user ${userId}`);
+        
+        workoutsSnapshot.forEach((workoutDoc) => {
+          allWorkouts.push(workoutDoc.data());
+        });
+      }
+    }
+    
+    // Aggregate all workouts
+    let totalWorkouts = allWorkouts.length;
+    let totalDuration = 0;
+    let totalCalories = 0;
+    let totalSteps = 0;
+    let totalHeartRateSum = 0;
+    let heartRateCount = 0;
+
+    allWorkouts.forEach((workout) => {
+      console.log(`   - Processing workout:`, {
+        duration: workout.duration,
+        calories: workout.finalCalories,
+        steps: workout.finalStepCount,
+        avgHR: workout.avgHeartRate
+      });
+      
+      totalDuration += workout.duration || 0;
+      totalCalories += workout.finalCalories || 0;
+      totalSteps += workout.finalStepCount || 0;
+      
+      if (workout.avgHeartRate && workout.avgHeartRate > 0) {
+        totalHeartRateSum += workout.avgHeartRate;
+        heartRateCount++;
+      }
+    });
+
+    const avgHeartRate = heartRateCount > 0 
+      ? Math.round(totalHeartRateSum / heartRateCount) 
+      : 0;
+
+    const globalStats = {
+      totalWorkouts,
+      totalDuration,
+      totalCalories: Math.round(totalCalories),
+      totalSteps,
+      avgHeartRate,
+    };
+
+    console.log('✅ Firebase: Global stats calculated:', globalStats);
+    return globalStats;
+  } catch (error) {
+    console.error('❌ Firebase: Error fetching global stats:', error);
+    return null;
+  }
+};
+
+// Fetch weekly workouts from all users (Monday to Sunday of current week)
+export const fetchWeeklyWorkoutsFromAllUsers = async (): Promise<WorkoutSession[]> => {
+  try {
+    console.log('📅 Firebase: Fetching weekly workouts from all users...');
+    
+    // Calculate Monday of current week (start of week)
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - daysFromMonday);
+    monday.setHours(0, 0, 0, 0); // Start of Monday
+    
+    // Calculate Sunday of current week (end of week)
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999); // End of Sunday
+    
+    console.log(`📅 Week range: ${monday.toLocaleDateString()} to ${sunday.toLocaleDateString()}`);
+    console.log(`📅 Timestamp range: ${monday.getTime()} to ${sunday.getTime()}`);
+    
+    const weekStartTimestamp = monday.getTime();
+    const weekEndTimestamp = sunday.getTime();
+    
+    let allWeeklyWorkouts: WorkoutSession[] = [];
+    
+    try {
+      // Try collectionGroup approach for efficiency
+      const workoutsRef = collectionGroup(db, 'workouts');
+      const workoutsSnapshot = await getDocs(workoutsRef);
+      
+      console.log(`📊 Total workouts in database: ${workoutsSnapshot.docs.length}`);
+      
+      // Filter for workouts within the current week
+      workoutsSnapshot.forEach((doc) => {
+        const workout = doc.data();
+        const workoutTime = workout.endTime || workout.startTime;
+        
+        if (workoutTime >= weekStartTimestamp && workoutTime <= weekEndTimestamp) {
+          allWeeklyWorkouts.push({
+            id: workout.id,
+            name: workout.name,
+            startTime: workout.startTime,
+            endTime: workout.endTime,
+            duration: workout.duration,
+            dataPoints: workout.dataPoints || [],
+            finalHeartRate: workout.finalHeartRate,
+            finalCalories: workout.finalCalories,
+            finalStepCount: workout.finalStepCount,
+            avgHeartRate: workout.avgHeartRate,
+          });
+        }
+      });
+      
+      console.log(`✅ Found ${allWeeklyWorkouts.length} workouts in current week`);
+    } catch (collectionGroupError) {
+      console.log('⚠️ collectionGroup failed, falling back to manual user iteration');
+      
+      // Fallback: Manually query each user
+      const usersRef = collection(db, 'users');
+      const usersSnapshot = await getDocs(usersRef);
+      
+      for (const userDoc of usersSnapshot.docs) {
+        const userId = userDoc.id;
+        const workoutsRef = collection(db, 'users', userId, 'workouts');
+        const workoutsSnapshot = await getDocs(workoutsRef);
+        
+        workoutsSnapshot.forEach((workoutDoc) => {
+          const workout = workoutDoc.data();
+          const workoutTime = workout.endTime || workout.startTime;
+          
+          if (workoutTime >= weekStartTimestamp && workoutTime <= weekEndTimestamp) {
+            allWeeklyWorkouts.push({
+              id: workout.id,
+              name: workout.name,
+              startTime: workout.startTime,
+              endTime: workout.endTime,
+              duration: workout.duration,
+              dataPoints: workout.dataPoints || [],
+              finalHeartRate: workout.finalHeartRate,
+              finalCalories: workout.finalCalories,
+              finalStepCount: workout.finalStepCount,
+              avgHeartRate: workout.avgHeartRate,
+            });
+          }
+        });
+      }
+    }
+    
+    // Sort by endTime descending (most recent first)
+    allWeeklyWorkouts.sort((a, b) => b.endTime - a.endTime);
+    
+    console.log(`✅ Returning ${allWeeklyWorkouts.length} weekly workouts`);
+    return allWeeklyWorkouts;
+  } catch (error) {
+    console.error('❌ Firebase: Error fetching weekly workouts:', error);
+    return [];
+  }
 };
