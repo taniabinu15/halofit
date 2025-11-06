@@ -429,3 +429,76 @@ export const fetchWeeklyWorkoutsFromAllUsers = async (): Promise<WorkoutSession[
     return [];
   }
 };
+
+// Fetch all workouts from all users (ever)
+export const fetchAllWorkoutsFromAllUsers = async (): Promise<WorkoutSession[]> => {
+  try {
+    console.log('📊 Firebase: Fetching all workouts from all users...');
+    
+    let allWorkouts: WorkoutSession[] = [];
+    
+    try {
+      // Try collectionGroup approach for efficiency
+      const workoutsRef = collectionGroup(db, 'workouts');
+      const workoutsSnapshot = await getDocs(workoutsRef);
+      
+      console.log(`📊 Total workouts in database: ${workoutsSnapshot.docs.length}`);
+      
+      // Map all workouts
+      workoutsSnapshot.forEach((doc) => {
+        const workout = doc.data();
+        allWorkouts.push({
+          id: workout.id,
+          name: workout.name,
+          startTime: workout.startTime,
+          endTime: workout.endTime,
+          duration: workout.duration,
+          dataPoints: workout.dataPoints || [],
+          finalHeartRate: workout.finalHeartRate,
+          finalCalories: workout.finalCalories,
+          finalStepCount: workout.finalStepCount,
+          avgHeartRate: workout.avgHeartRate,
+        });
+      });
+      
+      console.log(`✅ Found ${allWorkouts.length} total workouts`);
+    } catch (collectionGroupError) {
+      console.log('⚠️ collectionGroup failed, falling back to manual user iteration');
+      
+      // Fallback: Manually query each user
+      const usersRef = collection(db, 'users');
+      const usersSnapshot = await getDocs(usersRef);
+      
+      for (const userDoc of usersSnapshot.docs) {
+        const userId = userDoc.id;
+        const workoutsRef = collection(db, 'users', userId, 'workouts');
+        const workoutsSnapshot = await getDocs(workoutsRef);
+        
+        workoutsSnapshot.forEach((workoutDoc) => {
+          const workout = workoutDoc.data();
+          allWorkouts.push({
+            id: workout.id,
+            name: workout.name,
+            startTime: workout.startTime,
+            endTime: workout.endTime,
+            duration: workout.duration,
+            dataPoints: workout.dataPoints || [],
+            finalHeartRate: workout.finalHeartRate,
+            finalCalories: workout.finalCalories,
+            finalStepCount: workout.finalStepCount,
+            avgHeartRate: workout.avgHeartRate,
+          });
+        });
+      }
+    }
+    
+    // Sort by endTime descending (most recent first)
+    allWorkouts.sort((a, b) => b.endTime - a.endTime);
+    
+    console.log(`✅ Returning ${allWorkouts.length} total workouts`);
+    return allWorkouts;
+  } catch (error) {
+    console.error('❌ Firebase: Error fetching all workouts:', error);
+    return [];
+  }
+};

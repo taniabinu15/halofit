@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { HaloFitColors } from '@/constants/Colors';
 
 interface ActivityRingsProps {
   calories: number;
@@ -53,7 +54,7 @@ export default function ActivityRings({
             cx={center}
             cy={center}
             r={radius1}
-            stroke="#2a2a2a"
+            stroke={HaloFitColors.grayLight}
             strokeWidth={strokeWidth}
             fill="none"
           />
@@ -61,7 +62,7 @@ export default function ActivityRings({
             cx={center}
             cy={center}
             r={radius2}
-            stroke="#2a2a2a"
+            stroke={HaloFitColors.grayLight}
             strokeWidth={strokeWidth}
             fill="none"
           />
@@ -69,7 +70,7 @@ export default function ActivityRings({
             cx={center}
             cy={center}
             r={radius3}
-            stroke="#2a2a2a"
+            stroke={HaloFitColors.grayLight}
             strokeWidth={strokeWidth}
             fill="none"
           />
@@ -79,7 +80,7 @@ export default function ActivityRings({
             cx={center}
             cy={center}
             r={radius1}
-            stroke="#FF5722"
+            stroke={HaloFitColors.primary}
             strokeWidth={strokeWidth}
             fill="none"
             strokeDasharray={circumference1}
@@ -91,7 +92,7 @@ export default function ActivityRings({
             cx={center}
             cy={center}
             r={radius2}
-            stroke="#4CAF50"
+            stroke={HaloFitColors.primaryLight}
             strokeWidth={strokeWidth}
             fill="none"
             strokeDasharray={circumference2}
@@ -103,7 +104,7 @@ export default function ActivityRings({
             cx={center}
             cy={center}
             r={radius3}
-            stroke="#2196F3"
+            stroke={HaloFitColors.accent}
             strokeWidth={strokeWidth}
             fill="none"
             strokeDasharray={circumference3}
@@ -116,19 +117,19 @@ export default function ActivityRings({
       
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#FF5722' }]} />
+          <View style={[styles.legendDot, { backgroundColor: HaloFitColors.primary }]} />
           <Text style={styles.legendText}>
             {Math.round(calories)}/{caloriesGoal} cal
           </Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#4CAF50' }]} />
+          <View style={[styles.legendDot, { backgroundColor: HaloFitColors.primaryLight }]} />
           <Text style={styles.legendText}>
             {Math.round(duration)}/{durationGoal} min
           </Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#2196F3' }]} />
+          <View style={[styles.legendDot, { backgroundColor: HaloFitColors.accent }]} />
           <Text style={styles.legendText}>
             {Math.round(steps)}/{stepsGoal} steps
           </Text>
@@ -152,17 +153,22 @@ const styles = StyleSheet.create({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 4,
+    marginVertical: 6,
+    backgroundColor: HaloFitColors.accentLight,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+    minWidth: 150,
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 10,
   },
   legendText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    fontSize: 15,
+    color: HaloFitColors.textPrimary,
+    fontWeight: '600',
   },
 });

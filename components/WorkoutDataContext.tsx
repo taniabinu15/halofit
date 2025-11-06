@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BLEData } from './HaloFitBLE';
-import { initFirebaseAuth, saveWorkoutToFirebase, syncLocalWorkoutsToFirebase, fetchWorkoutsFromFirebase, updateWorkoutNameInFirebase, fetchGlobalStatsFromFirebase, fetchWeeklyWorkoutsFromAllUsers } from '../services/firebaseService';
+import { initFirebaseAuth, saveWorkoutToFirebase, syncLocalWorkoutsToFirebase, fetchWorkoutsFromFirebase, updateWorkoutNameInFirebase, fetchGlobalStatsFromFirebase, fetchWeeklyWorkoutsFromAllUsers, fetchAllWorkoutsFromAllUsers } from '../services/firebaseService';
 
 export interface WorkoutSession {
   id: string;
@@ -31,10 +31,12 @@ interface WorkoutDataContextType {
   globalStats: WorkoutStats;
   workoutHistory: WorkoutSession[];
   weeklyWorkouts: WorkoutSession[];
+  allWorkouts: WorkoutSession[];
   saveWorkout: (session: WorkoutSession) => Promise<void>;
   refreshStats: () => Promise<void>;
   refreshGlobalStats: () => Promise<void>;
   refreshWeeklyWorkouts: () => Promise<void>;
+  refreshAllWorkouts: () => Promise<void>;
   isFirebaseReady: boolean;
   syncToFirebase: () => Promise<void>;
   updateWorkoutName: (workoutId: string, newName: string) => Promise<void>;
@@ -47,6 +49,7 @@ const STORAGE_KEY = '@halofit_workouts';
 export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutSession[]>([]);
   const [weeklyWorkouts, setWeeklyWorkouts] = useState<WorkoutSession[]>([]);
+  const [allWorkouts, setAllWorkouts] = useState<WorkoutSession[]>([]);
   const [workoutStats, setWorkoutStats] = useState<WorkoutStats>({
     totalWorkouts: 0,
     totalDuration: 0,
@@ -262,8 +265,20 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
     console.log(`✅ Weekly workouts updated: ${workouts.length} workouts`);
   };
 
+  const refreshAllWorkouts = async () => {
+    if (!isFirebaseReady) {
+      console.warn('⚠️ Firebase not ready, cannot fetch all workouts');
+      return;
+    }
+
+    console.log('📊 Fetching all workouts from all users...');
+    const workouts = await fetchAllWorkoutsFromAllUsers();
+    setAllWorkouts(workouts);
+    console.log(`✅ All workouts updated: ${workouts.length} workouts`);
+  };
+
   return (
-    <WorkoutDataContext.Provider value={{ workoutStats, globalStats, workoutHistory, weeklyWorkouts, saveWorkout, refreshStats, refreshGlobalStats, refreshWeeklyWorkouts, isFirebaseReady, syncToFirebase, updateWorkoutName }}>
+    <WorkoutDataContext.Provider value={{ workoutStats, globalStats, workoutHistory, weeklyWorkouts, allWorkouts, saveWorkout, refreshStats, refreshGlobalStats, refreshWeeklyWorkouts, refreshAllWorkouts, isFirebaseReady, syncToFirebase, updateWorkoutName }}>
       {children}
     </WorkoutDataContext.Provider>
   );
