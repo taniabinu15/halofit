@@ -214,13 +214,20 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const updateWorkoutName = async (workoutId: string, newName: string) => {
     try {
-      // Update locally
+      // Update locally in workoutHistory
       const updatedHistory = workoutHistory.map(workout =>
         workout.id === workoutId ? { ...workout, name: newName } : workout
       );
       setWorkoutHistory(updatedHistory);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedHistory));
-      console.log('✅ Workout name updated locally');
+      console.log('✅ Workout name updated locally in workoutHistory');
+
+      // Also update in allWorkouts state
+      const updatedAllWorkouts = allWorkouts.map(workout =>
+        workout.id === workoutId ? { ...workout, name: newName } : workout
+      );
+      setAllWorkouts(updatedAllWorkouts);
+      console.log('✅ Workout name updated in allWorkouts');
 
       // Update in Firebase
       if (isFirebaseReady) {
