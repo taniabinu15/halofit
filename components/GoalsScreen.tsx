@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { HaloFitColors } from '@/constants/Colors';
 
 interface Goal {
   id: string;
@@ -33,7 +34,7 @@ const goals: Goal[] = [
     target: 5,
     unit: 'workouts',
     icon: 'fitness',
-    color: '#3b82f6',
+    color: HaloFitColors.primary,
     timeframe: 'This Week'
   },
   {
@@ -44,7 +45,7 @@ const goals: Goal[] = [
     target: 3000,
     unit: 'kcal',
     icon: 'flame',
-    color: '#f97316',
+    color: HaloFitColors.accentCoral,
     timeframe: 'This Week'
   },
   {
@@ -55,7 +56,7 @@ const goals: Goal[] = [
     target: 140,
     unit: 'points',
     icon: 'trophy',
-    color: '#8b5cf6',
+    color: HaloFitColors.accentPurple,
     timeframe: 'This Week'
   },
   {
@@ -66,7 +67,7 @@ const goals: Goal[] = [
     target: 100,
     unit: 'km',
     icon: 'walk',
-    color: '#22c55e',
+    color: HaloFitColors.primaryLight,
     timeframe: 'This Month'
   },
 ];
@@ -78,7 +79,7 @@ const achievements: Achievement[] = [
     description: 'Complete your first workout',
     icon: 'ribbon',
     earned: true,
-    color: '#fbbf24'
+    color: HaloFitColors.accentCoral
   },
   {
     id: '2',
@@ -86,7 +87,7 @@ const achievements: Achievement[] = [
     description: 'Complete 5 workouts in one week',
     icon: 'medal',
     earned: true,
-    color: '#f59e0b'
+    color: HaloFitColors.primary
   },
   {
     id: '3',
@@ -94,7 +95,7 @@ const achievements: Achievement[] = [
     description: 'Burn 500+ calories in one workout',
     icon: 'flame',
     earned: true,
-    color: '#dc2626'
+    color: HaloFitColors.primaryLight
   },
   {
     id: '4',
@@ -102,7 +103,7 @@ const achievements: Achievement[] = [
     description: 'Workout 10 days in a row',
     icon: 'checkmark-circle',
     earned: false,
-    color: '#6b7280'
+    color: HaloFitColors.gray
   },
   {
     id: '5',
@@ -110,7 +111,7 @@ const achievements: Achievement[] = [
     description: 'Spend 20+ minutes in orange zone',
     icon: 'heart',
     earned: false,
-    color: '#6b7280'
+    color: HaloFitColors.gray
   },
   {
     id: '6',
@@ -118,7 +119,7 @@ const achievements: Achievement[] = [
     description: 'Complete 20 workouts in one month',
     icon: 'star',
     earned: false,
-    color: '#6b7280'
+    color: HaloFitColors.gray
   },
 ];
 
@@ -182,12 +183,7 @@ export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Goals</Text>
-        <Text style={styles.headerSubtitle}>Track your progress</Text>
-      </View>
-
+    <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Current Goals */}
         <View style={styles.section}>
@@ -224,23 +220,30 @@ export default function GoalsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: HaloFitColors.white,
   },
   header: {
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    padding: 25,
+    backgroundColor: HaloFitColors.primary,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#000',
+    color: HaloFitColors.white,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
+    fontSize: 15,
+    color: HaloFitColors.white,
+    marginTop: 5,
+    opacity: 0.9,
+    fontWeight: '500',
   },
   scrollView: {
     flex: 1,
@@ -249,33 +252,35 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: HaloFitColors.primary,
     marginBottom: 16,
   },
   goalsList: {
     gap: 16,
   },
   goalCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
   },
   goalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   goalIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -284,23 +289,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   goalTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: HaloFitColors.textPrimary,
   },
   goalTimeframe: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: 13,
+    color: HaloFitColors.textSecondary,
+    fontWeight: '500',
   },
   goalProgress: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: HaloFitColors.primary,
   },
   goalDescription: {
     fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
+    color: HaloFitColors.textSecondary,
+    marginBottom: 14,
+    fontWeight: '500',
   },
   progressContainer: {
     flexDirection: 'row',
@@ -309,20 +316,20 @@ const styles = StyleSheet.create({
   },
   progressBackground: {
     flex: 1,
-    height: 8,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 4,
+    height: 10,
+    backgroundColor: HaloFitColors.accentLight,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 5,
   },
   progressText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-    minWidth: 30,
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: HaloFitColors.primary,
+    minWidth: 35,
   },
   achievementsList: {
     flexDirection: 'row',
@@ -331,60 +338,63 @@ const styles = StyleSheet.create({
   },
   achievementBadge: {
     width: '47%',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 20,
+    padding: 18,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
   },
   achievementBadgeDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   achievementIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   achievementTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: HaloFitColors.textPrimary,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 5,
   },
   achievementTitleDisabled: {
-    color: '#9ca3af',
+    color: HaloFitColors.textLight,
   },
   achievementDescription: {
     fontSize: 12,
-    color: '#6b7280',
+    color: HaloFitColors.textSecondary,
     textAlign: 'center',
+    fontWeight: '500',
   },
   achievementDescriptionDisabled: {
-    color: '#d1d5db',
+    color: HaloFitColors.textLight,
   },
   addGoalButton: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 20,
+    padding: 25,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    borderWidth: 2,
-    borderColor: '#f3f4f6',
+    borderWidth: 3,
+    borderColor: HaloFitColors.accent,
     borderStyle: 'dashed',
   },
   addGoalText: {
-    fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '500',
+    fontSize: 17,
+    color: HaloFitColors.primary,
+    fontWeight: 'bold',
   },
 });

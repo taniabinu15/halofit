@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { WorkoutSession } from './WorkoutDataContext';
+import { HaloFitColors } from '@/constants/Colors';
 
 interface HeartRateZonesChartProps {
   workoutHistory: WorkoutSession[];
@@ -21,10 +22,10 @@ export default function HeartRateZonesChart({ workoutHistory }: HeartRateZonesCh
   // Heart rate zones based on percentage of max HR (220 - age)
   // Assuming average user age of 30, max HR = 190
   const zones: Omit<ZoneData, 'minutes' | 'percentage'>[] = [
-    { name: 'Resting', min: 50, max: 100, color: '#90A4AE' },
-    { name: 'Fat Burn', min: 100, max: 133, color: '#4CAF50' },
-    { name: 'Cardio', min: 133, max: 152, color: '#FFC107' },
-    { name: 'Peak', min: 152, max: 220, color: '#FF5722' },
+    { name: 'Resting', min: 50, max: 100, color: HaloFitColors.accent },
+    { name: 'Fat Burn', min: 100, max: 133, color: HaloFitColors.primaryLight },
+    { name: 'Cardio', min: 133, max: 152, color: HaloFitColors.primary },
+    { name: 'Peak', min: 152, max: 220, color: HaloFitColors.primaryDark },
   ];
 
   const calculateZoneData = (): ZoneData[] => {
@@ -118,12 +119,12 @@ export default function HeartRateZonesChart({ workoutHistory }: HeartRateZonesCh
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: HaloFitColors.white,
     borderRadius: 15,
     padding: 20,
     marginHorizontal: 15,
     marginVertical: 10,
-    shadowColor: '#000',
+    shadowColor: HaloFitColors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -138,12 +139,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: HaloFitColors.textPrimary,
   },
   totalTime: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: HaloFitColors.textSecondary,
   },
   chartContainer: {
     marginBottom: 15,
@@ -168,11 +169,11 @@ const styles = StyleSheet.create({
   zoneName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: HaloFitColors.textPrimary,
   },
   zoneRange: {
     fontSize: 12,
-    color: '#999',
+    color: HaloFitColors.textLight,
     marginTop: 2,
   },
   barContainer: {
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
   barBackground: {
     flex: 1,
     height: 24,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: HaloFitColors.accentLight,
     borderRadius: 12,
     overflow: 'hidden',
     marginRight: 10,
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   zoneValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: HaloFitColors.textPrimary,
     width: 60,
     textAlign: 'right',
   },
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#999',
+    color: HaloFitColors.textLight,
     fontStyle: 'italic',
   },
 });

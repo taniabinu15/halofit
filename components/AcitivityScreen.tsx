@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import WeeklyActivityChart from './WeeklyActivityChart';
 import ActivityRings from './ActivityRings';
 import HeartRateZonesChart from './HeartRateZonesChart';
+import { HaloFitColors } from '@/constants/Colors';
 
 export default function ActivityScreen() {
   const { workoutStats, workoutHistory, weeklyWorkouts, refreshStats, refreshWeeklyWorkouts, updateWorkoutName, isFirebaseReady } = useWorkoutData();
@@ -133,7 +134,7 @@ export default function ActivityScreen() {
         workoutHistory={weeklyWorkouts}
         metricType="duration"
         title="Exercise"
-        color="#4CAF50"
+        color={HaloFitColors.primaryLight}
         unit="min"
       />
       
@@ -141,7 +142,7 @@ export default function ActivityScreen() {
         workoutHistory={weeklyWorkouts}
         metricType="calories"
         title="Active Calories"
-        color="#FF5722"
+        color={HaloFitColors.primary}
         unit="cal"
       />
 
@@ -149,7 +150,7 @@ export default function ActivityScreen() {
         workoutHistory={weeklyWorkouts}
         metricType="steps"
         title="Steps"
-        color="#2196F3"
+        color={HaloFitColors.accent}
       />
 
       {/* Heart Rate Zones */}
@@ -195,13 +196,13 @@ export default function ActivityScreen() {
       {/* Overall Stats Grid - Using weekly data from ALL users */}
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
-          <Ionicons name="barbell-outline" size={28} color="#4CAF50" style={{ marginBottom: 8 }} />
+          <Ionicons name="barbell-outline" size={28} color={HaloFitColors.primary} style={{ marginBottom: 8 }} />
           <Text style={styles.statCardValue}>{weeklyStats.count}</Text>
           <Text style={styles.statCardLabel}>Workouts</Text>
         </View>
         
         <View style={styles.statCard}>
-          <Ionicons name="time-outline" size={28} color="#2196F3" style={{ marginBottom: 8 }} />
+          <Ionicons name="time-outline" size={28} color={HaloFitColors.primaryLight} style={{ marginBottom: 8 }} />
           <Text style={styles.statCardValue}>
             {formatDuration(weeklyStats.duration)}
           </Text>
@@ -209,7 +210,7 @@ export default function ActivityScreen() {
         </View>
         
         <View style={styles.statCard}>
-          <Ionicons name="flame-outline" size={28} color="#FF5722" style={{ marginBottom: 8 }} />
+          <Ionicons name="flame-outline" size={28} color={HaloFitColors.primary} style={{ marginBottom: 8 }} />
           <Text style={styles.statCardValue}>
             {Math.round(weeklyStats.calories)}
           </Text>
@@ -217,7 +218,7 @@ export default function ActivityScreen() {
         </View>
 
         <View style={styles.statCard}>
-          <Ionicons name="footsteps-outline" size={28} color="#9C27B0" style={{ marginBottom: 8 }} />
+          <Ionicons name="footsteps-outline" size={28} color={HaloFitColors.accent} style={{ marginBottom: 8 }} />
           <Text style={styles.statCardValue}>
             {Math.round(weeklyStats.steps).toLocaleString()}
           </Text>
@@ -239,7 +240,7 @@ export default function ActivityScreen() {
                   style={styles.recentWorkoutIcon}
                   onPress={() => handleEditWorkoutName(workout.id, workout.name)}
                 >
-                  <Ionicons name="create-outline" size={24} color="#4CAF50" />
+                  <Ionicons name="create-outline" size={24} color={HaloFitColors.primary} />
                 </TouchableOpacity>
                 <View style={styles.recentWorkoutContent}>
                   <Text style={styles.recentWorkoutName}>
@@ -270,7 +271,7 @@ export default function ActivityScreen() {
               <Ionicons 
                 name={showAllWorkouts ? "chevron-up" : "chevron-down"} 
                 size={18} 
-                color="#4CAF50" 
+                color={HaloFitColors.primary} 
               />
             </TouchableOpacity>
           )}
@@ -292,62 +293,74 @@ export default function ActivityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: HaloFitColors.background,
   },
   header: {
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    padding: 25,
+    backgroundColor: HaloFitColors.primary,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: HaloFitColors.white,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 15,
+    color: HaloFitColors.white,
     marginTop: 5,
+    opacity: 0.9,
+    fontWeight: '500',
   },
   ringsCard: {
     margin: 15,
-    padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 25,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 25,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
+    color: HaloFitColors.primary,
+    marginBottom: 15,
     textAlign: 'center',
   },
   weeklyCard: {
     margin: 15,
-    padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 25,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 25,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
   },
   weeklyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
+    justifyContent: 'center',
   },
   weeklyTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: HaloFitColors.primary,
     marginLeft: 10,
   },
   weeklyStatsRow: {
@@ -356,39 +369,45 @@ const styles = StyleSheet.create({
   },
   weeklyStatItem: {
     alignItems: 'center',
+    backgroundColor: HaloFitColors.accentLight,
+    padding: 15,
+    borderRadius: 15,
+    minWidth: 90,
   },
   weeklyStatValue: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: HaloFitColors.primary,
   },
   weeklyStatLabel: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 13,
+    color: HaloFitColors.textSecondary,
     marginTop: 5,
+    fontWeight: '600',
   },
   lastWorkoutCard: {
     margin: 15,
-    padding: 20,
-    backgroundColor: '#4CAF50',
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 25,
+    backgroundColor: HaloFitColors.primary,
+    borderRadius: 25,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
   },
   cardTitle: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
+    fontSize: 18,
+    color: HaloFitColors.white,
+    fontWeight: 'bold',
     marginBottom: 5,
   },
   lastWorkoutDate: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
+    fontSize: 15,
+    color: HaloFitColors.white,
+    opacity: 0.9,
     marginBottom: 15,
+    fontWeight: '500',
   },
   statsRow: {
     flexDirection: 'row',
@@ -396,16 +415,20 @@ const styles = StyleSheet.create({
   },
   statItem: {
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    padding: 12,
+    borderRadius: 15,
+    minWidth: 80,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#fff',
+    color: HaloFitColors.white,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
+    fontSize: 13,
+    color: HaloFitColors.white,
+    fontWeight: '600',
     marginTop: 5,
   },
   statsGrid: {
@@ -417,55 +440,67 @@ const styles = StyleSheet.create({
     width: '47%',
     margin: '1.5%',
     padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 15,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 20,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
   },
   statCardValue: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: 'bold',
-    color: '#333',
+    color: HaloFitColors.primary,
     marginBottom: 8,
   },
   statCardLabel: {
     fontSize: 14,
-    color: '#666',
+    color: HaloFitColors.textSecondary,
     textAlign: 'center',
+    fontWeight: '600',
   },
   recentSection: {
     margin: 15,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 25,
+    padding: 20,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
   },
   recentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: HaloFitColors.accent,
   },
   recentTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: HaloFitColors.primary,
   },
   recentWorkoutItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 15,
+    paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: HaloFitColors.accentLight,
+    backgroundColor: HaloFitColors.white,
+    borderRadius: 12,
+    marginBottom: 8,
   },
   recentWorkoutLeft: {
     flexDirection: 'row',
@@ -474,6 +509,9 @@ const styles = StyleSheet.create({
   },
   recentWorkoutIcon: {
     marginRight: 12,
+    backgroundColor: HaloFitColors.accentLight,
+    padding: 8,
+    borderRadius: 12,
   },
   recentWorkoutContent: {
     flex: 1,
@@ -483,70 +521,82 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   recentWorkoutName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: HaloFitColors.textPrimary,
     marginBottom: 4,
   },
   recentWorkoutDate: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#999',
+    fontWeight: '600',
+    color: HaloFitColors.primary,
     textAlign: 'right',
   },
   recentWorkoutDetails: {
     fontSize: 13,
-    color: '#666',
+    color: HaloFitColors.textSecondary,
     fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: 50,
     marginTop: 50,
+    marginHorizontal: 20,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
   },
   emptyStateText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#666',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: HaloFitColors.primary,
     marginBottom: 10,
   },
   emptyStateSubtext: {
     fontSize: 16,
-    color: '#999',
+    color: HaloFitColors.textSecondary,
     textAlign: 'center',
+    fontWeight: '500',
   },
   weeklyStatsHeader: {
     paddingHorizontal: 20,
     paddingTop: 25,
     paddingBottom: 15,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: HaloFitColors.background,
   },
   weeklyStatsTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: HaloFitColors.primary,
   },
   workoutCount: {
     fontSize: 14,
-    color: '#666',
+    color: HaloFitColors.textSecondary,
     marginLeft: 8,
-    fontWeight: '500',
+    fontWeight: '600',
+    backgroundColor: HaloFitColors.accentLight,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 15,
     paddingHorizontal: 16,
     marginTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopWidth: 2,
+    borderTopColor: HaloFitColors.accent,
+    backgroundColor: HaloFitColors.accentLight,
+    borderRadius: 15,
   },
   viewAllText: {
-    fontSize: 15,
-    color: '#4CAF50',
-    fontWeight: '600',
+    fontSize: 16,
+    color: HaloFitColors.primary,
+    fontWeight: 'bold',
     marginRight: 6,
   },
 });

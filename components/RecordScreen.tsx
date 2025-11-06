@@ -1,8 +1,10 @@
 // RecordScreen.tsx - REWRITTEN FOR SIMPLICITY
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { HaloFitBLEManager, BLEData } from './HaloFitBLE';
 import { useWorkoutData, WorkoutSession } from './WorkoutDataContext';
+import { HaloFitColors } from '@/constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function RecordScreen() {
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -180,46 +182,60 @@ export default function RecordScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>🏃‍♂️ Workout Session</Text>
+        <Text style={styles.title}>Workout Session</Text>
+        <Text style={styles.subtitle}>Track your fitness journey</Text>
       </View>
 
       {/* Connection Status */}
       <View style={styles.statusContainer}>
-        <Text style={styles.statusLabel}>Device Status:</Text>
+        <View style={styles.statusHeader}>
+          <View style={[
+            styles.statusDot,
+            { backgroundColor: isPairing ? '#FFA726' : (isConnected ? '#4CAF50' : '#FF5252') }
+          ]} />
+          <Text style={styles.statusLabel}>Device Status</Text>
+        </View>
         <View style={[
-          styles.statusIndicator,
-          { backgroundColor: isPairing ? '#FFA726' : (isConnected ? '#4CAF50' : '#FF5252') }
-        ]} />
-        <Text style={styles.statusText}>
-          {isPairing ? '🔍 Searching...' : (isConnected ? '✅ Connected' : '❌ Disconnected')}
-        </Text>
+          styles.statusBadge,
+          { backgroundColor: isPairing ? HaloFitColors.accentCoral : (isConnected ? HaloFitColors.primary : HaloFitColors.gray) }
+        ]}>
+          <View style={styles.statusIndicator} />
+          <Text style={styles.statusText}>
+            {isPairing ? 'Searching...' : (isConnected ? 'Connected' : 'Disconnected')}
+          </Text>
+        </View>
       </View>
 
       {/* Pair Button */}
-      <View style={styles.buttonContainer}>
-        <Button
-          title={isPairing ? 'Searching for Device...' : '🔗 Pair HaloFit Headband'}
+      {!isConnected && (
+        <TouchableOpacity 
+          style={[styles.primaryButton, isPairing && styles.disabledButton]}
           onPress={handlePairDevice}
-          disabled={isPairing || isConnected}
-          color="#2196F3"
-        />
-      </View>
+          disabled={isPairing}
+        >
+          <Ionicons name="bluetooth" size={22} color={HaloFitColors.white} />
+          <Text style={styles.primaryButtonText}>
+            {isPairing ? 'Searching for Device...' : 'Pair HaloFit Headband'}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Workout Controls */}
       {isConnected && !isWorkoutActive && (
-        <View style={styles.buttonContainer}>
-          <Button
-            title="▶️ Start Workout"
-            onPress={handleStartWorkout}
-            color="#4CAF50"
-          />
-        </View>
+        <TouchableOpacity 
+          style={styles.startButton}
+          onPress={handleStartWorkout}
+        >
+          <Ionicons name="play-circle" size={26} color={HaloFitColors.white} />
+          <Text style={styles.startButtonText}>Start Workout</Text>
+        </TouchableOpacity>
       )}
 
       {isWorkoutActive && (
         <>
           {/* Timer */}
           <View style={styles.timerContainer}>
+            <Ionicons name="time" size={32} color={HaloFitColors.primary} style={{ marginBottom: 10 }} />
             <Text style={styles.timerLabel}>Duration</Text>
             <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
           </View>
@@ -227,40 +243,50 @@ export default function RecordScreen() {
           {/* Live Data */}
           {currentBleData && (
             <View style={styles.dataContainer}>
-              <Text style={styles.dataTitle}>📊 Live Data</Text>
+              <Text style={styles.dataTitle}>Live Data</Text>
               
-              <View style={styles.dataRow}>
-                <View style={styles.dataItem}>
+              <View style={styles.dataGrid}>
+                <View style={styles.dataCard}>
+                  <Ionicons name="heart" size={32} color={HaloFitColors.primary} />
                   <Text style={styles.dataValue}>{currentBleData.heartRate}</Text>
-                  <Text style={styles.dataLabel}>❤️ Heart Rate (bpm)</Text>
+                  <Text style={styles.dataLabel}>Heart Rate</Text>
+                  <Text style={styles.dataUnit}>bpm</Text>
                 </View>
-                <View style={styles.dataItem}>
+                
+                <View style={styles.dataCard}>
+                  <Ionicons name="flame" size={32} color={HaloFitColors.accentCoral} />
                   <Text style={styles.dataValue}>{Math.round(currentBleData.calories)}</Text>
-                  <Text style={styles.dataLabel}>🔥 Calories (kcal)</Text>
+                  <Text style={styles.dataLabel}>Calories</Text>
+                  <Text style={styles.dataUnit}>kcal</Text>
                 </View>
               </View>
 
-              <View style={styles.dataRow}>
-                <View style={styles.dataItem}>
+              <View style={styles.dataGrid}>
+                <View style={styles.dataCard}>
+                  <Ionicons name="footsteps" size={32} color={HaloFitColors.accentPurple} />
                   <Text style={styles.dataValue}>{currentBleData.stepCount}</Text>
-                  <Text style={styles.dataLabel}>👟 Steps</Text>
+                  <Text style={styles.dataLabel}>Steps</Text>
+                  <Text style={styles.dataUnit}>count</Text>
                 </View>
-                <View style={styles.dataItem}>
+                
+                <View style={styles.dataCard}>
+                  <Ionicons name="analytics" size={32} color={HaloFitColors.primaryLight} />
                   <Text style={styles.dataValue}>{workoutData.length}</Text>
-                  <Text style={styles.dataLabel}>📈 Data Points</Text>
+                  <Text style={styles.dataLabel}>Data Points</Text>
+                  <Text style={styles.dataUnit}>recorded</Text>
                 </View>
               </View>
             </View>
           )}
 
           {/* Stop Button */}
-          <View style={styles.buttonContainer}>
-            <Button
-              title="⏹️ Stop Workout"
-              onPress={handleStopWorkout}
-              color="#F44336"
-            />
-          </View>
+          <TouchableOpacity 
+            style={styles.stopButton}
+            onPress={handleStopWorkout}
+          >
+            <Ionicons name="stop-circle" size={26} color={HaloFitColors.white} />
+            <Text style={styles.stopButtonText}>Stop Workout</Text>
+          </TouchableOpacity>
         </>
       )}
 
@@ -281,108 +307,238 @@ export default function RecordScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: HaloFitColors.background,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 25,
+    backgroundColor: HaloFitColors.primary,
+    padding: 25,
+    borderRadius: 25,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: HaloFitColors.white,
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: HaloFitColors.white,
+    opacity: 0.9,
+    fontWeight: '500',
   },
   statusContainer: {
+    padding: 20,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 20,
+    marginBottom: 20,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    gap: 10,
+  },
+  statusDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statusLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: HaloFitColors.textPrimary,
+  },
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    marginBottom: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  statusLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    gap: 8,
   },
   statusIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: HaloFitColors.white,
   },
   statusText: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: HaloFitColors.white,
   },
-  buttonContainer: {
-    marginVertical: 10,
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: HaloFitColors.primary,
+    padding: 18,
+    borderRadius: 25,
+    marginBottom: 15,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+    gap: 10,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  primaryButtonText: {
+    color: HaloFitColors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  startButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: HaloFitColors.primary,
+    padding: 20,
+    borderRadius: 25,
+    marginBottom: 20,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+    gap: 12,
+  },
+  startButtonText: {
+    color: HaloFitColors.white,
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  stopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: HaloFitColors.error,
+    padding: 18,
+    borderRadius: 25,
+    marginTop: 20,
+    shadowColor: HaloFitColors.error,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+    gap: 10,
+  },
+  stopButtonText: {
+    color: HaloFitColors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   timerContainer: {
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    marginVertical: 15,
-    elevation: 2,
+    padding: 30,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 25,
+    marginVertical: 20,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 3,
+    borderColor: HaloFitColors.accent,
   },
   timerLabel: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 5,
+    fontSize: 18,
+    color: HaloFitColors.textSecondary,
+    marginBottom: 10,
+    fontWeight: '600',
   },
   timerText: {
-    fontSize: 48,
+    fontSize: 64,
     fontWeight: 'bold',
-    color: '#2196F3',
+    color: HaloFitColors.primary,
   },
   dataContainer: {
     padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 25,
     marginVertical: 15,
-    elevation: 2,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
   },
   dataTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 20,
     textAlign: 'center',
+    color: HaloFitColors.primary,
   },
-  dataRow: {
+  dataGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 10,
+    justifyContent: 'space-between',
+    marginBottom: 15,
+    gap: 10,
   },
-  dataItem: {
-    alignItems: 'center',
+  dataCard: {
     flex: 1,
+    alignItems: 'center',
+    backgroundColor: HaloFitColors.accentLight,
+    padding: 20,
+    borderRadius: 20,
   },
   dataValue: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: '#333',
+    color: HaloFitColors.primary,
+    marginTop: 10,
+    marginBottom: 5,
   },
   dataLabel: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 5,
+    color: HaloFitColors.textSecondary,
     textAlign: 'center',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  dataUnit: {
+    fontSize: 12,
+    color: HaloFitColors.textLight,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   debugContainer: {
     marginTop: 20,
-    padding: 10,
-    backgroundColor: '#ffe082',
-    borderRadius: 5,
+    padding: 15,
+    backgroundColor: HaloFitColors.accentLight,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accent,
   },
   debugText: {
     fontSize: 12,
     fontFamily: 'monospace',
+    color: HaloFitColors.textPrimary,
   },
 });

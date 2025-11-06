@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { WorkoutSession } from './WorkoutDataContext';
+import { HaloFitColors } from '@/constants/Colors';
 
 interface WeeklyActivityChartProps {
   workoutHistory: WorkoutSession[];
@@ -102,7 +103,7 @@ export default function WeeklyActivityChart({
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
         <View style={styles.stats}>
-          <Text style={[styles.totalValue, { color }]}>
+          <Text style={styles.totalValue}>
             {getTotalValue()}{unit}
           </Text>
           <Text style={styles.goalText}>/{getGoalValue()}</Text>
@@ -123,7 +124,7 @@ export default function WeeklyActivityChart({
                       styles.bar,
                       { 
                         height: `${Math.max(heightPercentage, 3)}%`,
-                        backgroundColor: day.value > 0 ? color : '#333'
+                        backgroundColor: day.value > 0 ? color : 'rgba(255, 255, 255, 0.2)' // Light bars for empty days
                       }
                     ]}
                   />
@@ -148,16 +149,18 @@ export default function WeeklyActivityChart({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
+    backgroundColor: '#FF69B4', // Hot pink background for contrast! 🎨💕
+    borderRadius: 20,
     padding: 20,
     marginHorizontal: 15,
     marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: HaloFitColors.primary,
   },
   header: {
     flexDirection: 'row',
@@ -166,22 +169,24 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: HaloFitColors.white, // White text for contrast
   },
   stats: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },
   totalValue: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
+    color: HaloFitColors.white, // White for total value
   },
   goalText: {
     fontSize: 14,
-    color: '#999',
+    color: HaloFitColors.white, // White for goal text
     marginLeft: 4,
+    fontWeight: '500',
   },
   chartContainer: {
     height: 150,
@@ -212,17 +217,18 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     fontSize: 12,
-    color: '#666',
+    color: HaloFitColors.white, // White for day labels
     marginTop: 8,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   todayLabel: {
-    color: '#4CAF50',
+    color: HaloFitColors.white, // Bright white for today
     fontWeight: 'bold',
   },
   valueLabel: {
     fontSize: 10,
-    color: '#999',
+    color: HaloFitColors.white, // White for values
     marginTop: 2,
+    fontWeight: '500',
   },
 });
