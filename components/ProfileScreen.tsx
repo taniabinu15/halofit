@@ -1,25 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useWorkoutData } from './WorkoutDataContext';
 
 export default function ProfileScreen() {
-  const { workoutStats, globalStats, workoutHistory, refreshStats, refreshGlobalStats, isFirebaseReady, syncToFirebase } = useWorkoutData();
+  const { workoutStats, globalStats, workoutHistory, allWorkouts, refreshStats, refreshGlobalStats, refreshAllWorkouts, isFirebaseReady, syncToFirebase, updateWorkoutName } = useWorkoutData();
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [showAllWorkouts, setShowAllWorkouts] = useState(false);
 
-  // Load global stats when Firebase becomes ready
+  // Load global stats and workouts when Firebase becomes ready
   useEffect(() => {
     if (isFirebaseReady) {
-      console.log('🔄 ProfileScreen: Firebase ready, loading global stats...');
+      console.log('🔄 ProfileScreen: Firebase ready, loading data...');
       refreshGlobalStats();
+      refreshStats(); // Load personal workouts
+      refreshAllWorkouts(); // Load all workouts from all users
     }
   }, [isFirebaseReady]);
+
+  // Debug log to see workout data
+  useEffect(() => {
+    console.log('📊 ProfileScreen workoutHistory:', workoutHistory.length, 'workouts');
+    console.log('📊 ProfileScreen allWorkouts:', allWorkouts.length, 'workouts');
+  }, [workoutHistory, allWorkouts]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await refreshStats();
     await refreshGlobalStats();
+    await refreshAllWorkouts();
     setRefreshing(false);
   };
 
@@ -38,6 +48,49 @@ export default function ProfileScreen() {
       return `${hours}h ${minutes}m`;
     }
     return `${minutes}m`;
+  };
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  const handleEditWorkoutName = (workoutId: string, currentName?: string) => {
+    Alert.prompt(
+      'Rename Workout',
+      'Enter a new name for this workout:',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Save',
+          onPress: async (newName?: string) => {
+            if (newName && newName.trim()) {
+              try {
+                await updateWorkoutName(workoutId, newName.trim());
+                Alert.alert('Success', 'Workout name updated!');
+              } catch (error) {
+                Alert.alert('Error', 'Failed to update workout name');
+              }
+            }
+          },
+        },
+      ],
+      'plain-text',
+      currentName || ''
+    );
+  };
+
+  const getDefaultWorkoutName = (date: number) => {
+    const workoutDate = new Date(date);
+    return `Workout ${workoutDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   };
 
   return (
@@ -135,6 +188,58 @@ export default function ProfileScreen() {
             {syncing ? 'Syncing...' : 'Sync to Cloud'}
           </Text>
         </TouchableOpacity>
+      )}
+
+      {/* All Workouts List */}
+      {allWorkouts.length > 0 && (
+        <View style={styles.allWorkoutsSection}>
+          <View style={styles.allWorkoutsHeader}>
+            <Text style={styles.allWorkoutsTitle}>All Workouts</Text>
+            <Text style={styles.workoutCount}>({allWorkouts.length} total)</Text>
+          </View>
+          {(showAllWorkouts ? allWorkouts : allWorkouts.slice(0, 5)).map((workout, index) => (
+            <View key={workout.id} style={styles.workoutItem}>
+              <View style={styles.workoutLeft}>
+                <TouchableOpacity 
+                  style={styles.workoutIcon}
+                  onPress={() => handleEditWorkoutName(workout.id, workout.name)}
+                >
+                  <Ionicons name="create-outline" size={24} color="#4CAF50" />
+                </TouchableOpacity>
+                <View style={styles.workoutContent}>
+                  <Text style={styles.workoutName}>
+                    {workout.name || getDefaultWorkoutName(workout.endTime)}
+                  </Text>
+                  <Text style={styles.workoutDetails}>
+                    {workout.duration > 0 ? formatDuration(workout.duration) : 'N/A'} • {Math.round(workout.finalCalories)} cal • {Math.round(workout.finalStepCount)} steps
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.workoutRight}>
+                <Text style={styles.workoutDate}>
+                  {formatDate(workout.endTime)}
+                </Text>
+              </View>
+            </View>
+          ))}
+          
+          {/* View All / Show Less Button */}
+          {allWorkouts.length > 5 && (
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={() => setShowAllWorkouts(!showAllWorkouts)}
+            >
+              <Text style={styles.viewAllText}>
+                {showAllWorkouts ? 'Show Less' : `View All (${allWorkouts.length - 5} more)`}
+              </Text>
+              <Ionicons 
+                name={showAllWorkouts ? "chevron-up" : "chevron-down"} 
+                size={18} 
+                color="#4CAF50" 
+              />
+            </TouchableOpacity>
+          )}
+        </View>
       )}
 
       {/* Additional Profile Sections */}
@@ -277,5 +382,89 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 6,
+  },
+  allWorkoutsSection: {
+    margin: 15,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  allWorkoutsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  allWorkoutsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  workoutCount: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  workoutItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  workoutLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  workoutIcon: {
+    marginRight: 12,
+  },
+  workoutContent: {
+    flex: 1,
+  },
+  workoutRight: {
+    alignItems: 'flex-end',
+    marginLeft: 12,
+  },
+  workoutName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  workoutDate: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#999',
+    textAlign: 'right',
+  },
+  workoutDetails: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  viewAllText: {
+    fontSize: 15,
+    color: '#4CAF50',
+    fontWeight: '600',
+    marginRight: 6,
   },
 });
