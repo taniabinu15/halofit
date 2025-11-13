@@ -18,6 +18,8 @@ export default function RecordScreen() {
   const bleManager = useRef(new HaloFitBLEManager());
   const timerInterval = useRef<number | null>(null);
   const isWorkoutActiveRef = useRef(false); // Track workout state for BLE callback
+  const baselineSteps = useRef<number>(0); // Store baseline steps at workout start
+  const baselineCalories = useRef<number>(0); // Store baseline calories at workout start
   const { saveWorkout, isFirebaseReady } = useWorkoutData();
 
   // Setup BLE callbacks once
@@ -29,11 +31,18 @@ export default function RecordScreen() {
       console.log('📊 Data received in RecordScreen:', data);
       // Only update if we have non-zero values
       if (data.heartRate > 0 || data.calories > 0 || data.stepCount > 0) {
-        setCurrentBleData(data);
+        // Adjust data relative to baseline if workout is active
+        const adjustedData = {
+          ...data,
+          stepCount: data.stepCount - baselineSteps.current,
+          calories: data.calories - baselineCalories.current,
+        };
+        
+        setCurrentBleData(adjustedData);
         // Use ref to get current workout state (avoids stale closure)
         if (isWorkoutActiveRef.current) {
-          console.log('✅ Adding data point to workout');
-          setWorkoutData(prev => [...prev, data]);
+          console.log('✅ Adding data point to workout (adjusted):', adjustedData);
+          setWorkoutData(prev => [...prev, adjustedData]);
         } else {
           console.log('⏸️ Workout not active, skipping data save');
         }
@@ -103,6 +112,18 @@ export default function RecordScreen() {
     }
 
     console.log('▶️ Starting workout');
+    
+    // Capture baseline values from current BLE data
+    if (currentBleData) {
+      baselineSteps.current = currentBleData.stepCount;
+      baselineCalories.current = currentBleData.calories;
+      console.log('📍 Baseline set - Steps:', baselineSteps.current, 'Calories:', baselineCalories.current);
+    } else {
+      baselineSteps.current = 0;
+      baselineCalories.current = 0;
+      console.log('📍 No baseline data available, starting from 0');
+    }
+    
     setIsWorkoutActive(true);
     isWorkoutActiveRef.current = true; // Update ref for BLE callback
     setWorkoutData([]);
