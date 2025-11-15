@@ -180,7 +180,9 @@ export default function RecordScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView 
+      style={styles.scrollView}
+      contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Workout Session</Text>
         <Text style={styles.subtitle}>Track your fitness journey</Text>
@@ -305,9 +307,14 @@ export default function RecordScreen() {
 }
 
 const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+    backgroundColor: '#FFF0F5', // Force lavender blush pink background
+  },
   container: {
     padding: 20,
-    backgroundColor: HaloFitColors.background,
+    backgroundColor: '#FFF0F5', // Force lavender blush pink background
+    minHeight: '100%',
   },
   header: {
     alignItems: 'center',
