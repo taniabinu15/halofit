@@ -181,14 +181,14 @@ export class HaloFitBLEManager {
         return;
       }
 
-      // Try parsing for format: "BPM: 103 | Calories: 62.15 kcal | Steps: 8"
+      // Try parsing for format: "BPM: 80 | Cal:57.11 kcal | Steps:  262"
       if (decoded.includes('BPM:')) {
         // Split by | and clean up each part
         const parts = decoded.split('|').map(part => part.trim());
         
         // Extract numeric values using regex
         const bpmPart = parts[0]?.match(/BPM:\s*(\d+)/);
-        const caloriesPart = parts[1]?.match(/Calories:\s*(\d+\.?\d*)/);
+        const caloriesPart = parts[1]?.match(/Cal:\s*(\d+\.?\d*)/);  // Changed from "Calories:" to "Cal:"
         const stepsPart = parts[2]?.match(/Steps:\s*(\d+)/);
         
         console.log('🔍 Parsed parts:', { bpmPart, caloriesPart, stepsPart });
