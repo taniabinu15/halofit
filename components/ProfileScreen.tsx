@@ -1,14 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useWorkoutData } from './WorkoutDataContext';
 import { HaloFitColors } from '@/constants/Colors';
+import { useAuth } from '@/components/AuthContext';
 
 export default function ProfileScreen() {
-  const { workoutStats, globalStats, workoutHistory, allWorkouts, refreshStats, refreshGlobalStats, refreshAllWorkouts, isFirebaseReady, syncToFirebase, updateWorkoutName } = useWorkoutData();
+  const { user, signOut } = useAuth();
+  const { workoutStats, globalStats, workoutHistory, allWorkouts, userProfile, refreshStats, refreshGlobalStats, refreshAllWorkouts, isFirebaseReady, syncToFirebase, updateWorkoutName, saveUserProfile } = useWorkoutData();
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [showAllWorkouts, setShowAllWorkouts] = useState(false);
+  
+  // Profile editing state
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [gender, setGender] = useState<'male' | 'female'>(userProfile?.gender || 'male');
+  const [age, setAge] = useState(userProfile?.age?.toString() || '');
+  const [heightInches, setHeightInches] = useState(userProfile?.heightInches?.toString() || '');
+  const [weightLbs, setWeightLbs] = useState(userProfile?.weightLbs?.toString() || '');
+
+  // Update form when userProfile changes
+  useEffect(() => {
+    if (userProfile) {
+      setGender(userProfile.gender);
+      setAge(userProfile.age?.toString() || '');
+      setHeightInches(userProfile.heightInches.toString());
+      setWeightLbs(userProfile.weightLbs.toString());
+    }
+  }, [userProfile]);
 
   // Load global stats and workouts when Firebase becomes ready
   useEffect(() => {
@@ -94,6 +113,36 @@ export default function ProfileScreen() {
     return `Workout ${workoutDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   };
 
+  const handleSaveProfile = async () => {
+    const ageNum = age ? parseFloat(age) : undefined;
+    const height = parseFloat(heightInches);
+    const weight = parseFloat(weightLbs);
+
+    // Validation
+    if (age && (isNaN(ageNum!) || ageNum! < 10 || ageNum! > 120)) {
+      Alert.alert('Invalid Age', 'Age must be between 10 and 120 years');
+      return;
+    }
+
+    if (isNaN(height) || height < 36 || height > 96) {
+      Alert.alert('Invalid Height', 'Height must be between 36 and 96 inches (3-8 feet)');
+      return;
+    }
+
+    if (isNaN(weight) || weight < 50 || weight > 500) {
+      Alert.alert('Invalid Weight', 'Weight must be between 50 and 500 pounds');
+      return;
+    }
+
+    try {
+      await saveUserProfile({ gender, age: ageNum, heightInches: height, weightLbs: weight });
+      setEditingProfile(false);
+      Alert.alert('Success', 'Profile saved! Your data will be synced to the device on next connection.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save profile');
+    }
+  };
+
   return (
     <ScrollView 
       style={styles.container}
@@ -117,6 +166,131 @@ export default function ProfileScreen() {
             {isFirebaseReady ? "Synced to Cloud" : "Offline Mode"}
           </Text>
         </View>
+      </View>
+
+      {/* User Profile Info Section */}
+      <View style={styles.profileInfoSection}>
+        <View style={styles.profileInfoHeader}>
+          <Ionicons name="body-outline" size={24} color={HaloFitColors.primary} />
+          <Text style={styles.sectionTitle}>My Profile</Text>
+          <TouchableOpacity 
+            style={styles.editIconButton}
+            onPress={() => setEditingProfile(!editingProfile)}
+          >
+            <Ionicons 
+              name={editingProfile ? "close-circle" : "create-outline"} 
+              size={24} 
+              color={HaloFitColors.primary} 
+            />
+          </TouchableOpacity>
+        </View>
+
+        {editingProfile ? (
+          <View style={styles.profileForm}>
+            {/* Gender Selection */}
+            <Text style={styles.formLabel}>Gender</Text>
+            <View style={styles.genderRow}>
+              <TouchableOpacity
+                style={[styles.genderBtn, gender === 'male' && styles.genderBtnActive]}
+                onPress={() => setGender('male')}
+              >
+                <Ionicons 
+                  name="male" 
+                  size={24} 
+                  color={gender === 'male' ? HaloFitColors.white : HaloFitColors.primary} 
+                />
+                <Text style={[styles.genderText, gender === 'male' && styles.genderTextActive]}>
+                  Male
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.genderBtn, gender === 'female' && styles.genderBtnActive]}
+                onPress={() => setGender('female')}
+              >
+                <Ionicons 
+                  name="female" 
+                  size={24} 
+                  color={gender === 'female' ? HaloFitColors.white : HaloFitColors.primary} 
+                />
+                <Text style={[styles.genderText, gender === 'female' && styles.genderTextActive]}>
+                  Female
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Age Input */}
+            <Text style={styles.formLabel}>Age (years)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 25"
+              placeholderTextColor={HaloFitColors.textSecondary}
+              keyboardType="numeric"
+              value={age}
+              onChangeText={setAge}
+            />
+
+            {/* Height Input */}
+            <Text style={styles.formLabel}>Height (inches)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 70 (5'10&quot;)"
+              placeholderTextColor={HaloFitColors.textSecondary}
+              keyboardType="numeric"
+              value={heightInches}
+              onChangeText={setHeightInches}
+            />
+
+            {/* Weight Input */}
+            <Text style={styles.formLabel}>Weight (lbs)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 150"
+              placeholderTextColor={HaloFitColors.textSecondary}
+              keyboardType="numeric"
+              value={weightLbs}
+              onChangeText={setWeightLbs}
+            />
+
+            {/* Save Button */}
+            <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
+              <Ionicons name="checkmark-circle" size={20} color={HaloFitColors.white} />
+              <Text style={styles.saveButtonText}>Save Profile</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.profileDisplay}>
+            {userProfile ? (
+              <>
+                <View style={styles.profileRow}>
+                  <Ionicons name={userProfile.gender === 'male' ? 'male' : 'female'} size={20} color={HaloFitColors.primary} />
+                  <Text style={styles.profileValue}>
+                    {userProfile.gender === 'male' ? 'Male' : 'Female'}
+                  </Text>
+                </View>
+                {userProfile.age && (
+                  <View style={styles.profileRow}>
+                    <Ionicons name="calendar-outline" size={20} color={HaloFitColors.primary} />
+                    <Text style={styles.profileValue}>{userProfile.age} years old</Text>
+                  </View>
+                )}
+                <View style={styles.profileRow}>
+                  <Ionicons name="resize-outline" size={20} color={HaloFitColors.primary} />
+                  <Text style={styles.profileValue}>
+                    {Math.floor(userProfile.heightInches / 12)}'{userProfile.heightInches % 12}" ({userProfile.heightInches}″)
+                  </Text>
+                </View>
+                <View style={styles.profileRow}>
+                  <Ionicons name="barbell-outline" size={20} color={HaloFitColors.primary} />
+                  <Text style={styles.profileValue}>{userProfile.weightLbs} lbs</Text>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.noProfileText}>
+                Tap the edit icon to set your profile. This data will be sent to your HaloFit device for accurate calorie and fitness tracking.
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Global Community Stats Section */}
@@ -199,7 +373,7 @@ export default function ProfileScreen() {
             <Text style={styles.workoutCount}>({allWorkouts.length} total)</Text>
           </View>
           {(showAllWorkouts ? allWorkouts : allWorkouts.slice(0, 5)).map((workout, index) => (
-            <View key={workout.id} style={styles.workoutItem}>
+            <View key={`${workout.id}_${index}`} style={styles.workoutItem}>
               <View style={styles.workoutLeft}>
                 <TouchableOpacity 
                   style={styles.workoutIcon}
@@ -243,10 +417,53 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      {/* Additional Profile Sections */}
+      {/* Account Settings */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Settings</Text>
-        {/* Add your existing profile settings here */}
+        <Text style={{ color: HaloFitColors.textSecondary, marginBottom: 12 }}>
+          {user?.isAnonymous ? 'Signed in as Guest' : user ? `Signed in: ${user.email ?? user.uid}` : 'Not signed in'}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity
+            style={{
+              backgroundColor: HaloFitColors.primary,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 12,
+            }}
+            onPress={() => {
+              // Navigate to login screen
+              // We use a dynamic import to avoid importing router at top-level for SSR safety
+              import('expo-router').then(({ router }) => router.push('/login' as any));
+            }}
+          >
+            <Text style={{ color: HaloFitColors.white, fontWeight: '700' }}>
+              {user ? 'Switch Account' : 'Log In'}
+            </Text>
+          </TouchableOpacity>
+
+          {user && (
+            <TouchableOpacity
+              style={{
+                backgroundColor: HaloFitColors.accentLight,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderRadius: 12,
+                borderWidth: 2,
+                borderColor: HaloFitColors.primary,
+              }}
+              onPress={async () => {
+                try {
+                  await signOut();
+                } catch (e) {
+                  Alert.alert('Sign out failed', 'Please try again.');
+                }
+              }}
+            >
+              <Text style={{ color: HaloFitColors.primary, fontWeight: '700' }}>Sign Out</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </ScrollView>
   );
@@ -504,5 +721,123 @@ const styles = StyleSheet.create({
     color: HaloFitColors.primary,
     fontWeight: 'bold',
     marginRight: 6,
+  },
+  profileInfoSection: {
+    margin: 15,
+    padding: 20,
+    backgroundColor: HaloFitColors.cardBackground,
+    borderRadius: 20,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
+  },
+  profileInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  editIconButton: {
+    marginLeft: 'auto',
+    padding: 4,
+  },
+  profileForm: {
+    marginTop: 10,
+  },
+  formLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: HaloFitColors.textPrimary,
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  genderRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 10,
+  },
+  genderBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: HaloFitColors.primary,
+    backgroundColor: HaloFitColors.white,
+    gap: 8,
+  },
+  genderBtnActive: {
+    backgroundColor: HaloFitColors.primary,
+  },
+  genderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: HaloFitColors.primary,
+  },
+  genderTextActive: {
+    color: HaloFitColors.white,
+  },
+  input: {
+    backgroundColor: HaloFitColors.white,
+    borderWidth: 2,
+    borderColor: HaloFitColors.accentLight,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: HaloFitColors.textPrimary,
+    marginBottom: 10,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: HaloFitColors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 15,
+    marginTop: 20,
+    gap: 8,
+    shadowColor: HaloFitColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  saveButtonText: {
+    color: HaloFitColors.white,
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  profileDisplay: {
+    marginTop: 10,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    backgroundColor: HaloFitColors.accentLight,
+    borderRadius: 12,
+    marginBottom: 10,
+    gap: 12,
+  },
+  profileValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: HaloFitColors.textPrimary,
+  },
+  noProfileText: {
+    fontSize: 14,
+    color: HaloFitColors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingVertical: 20,
   },
 });

@@ -251,6 +251,36 @@ export class HaloFitBLEManager {
     return this.device !== null;
   }
 
+  async sendUserProfile(gender: 'male' | 'female', age: number | undefined, heightInches: number, weightLbs: number): Promise<boolean> {
+    if (!this.device) {
+      console.log('❌ Cannot send profile: not connected');
+      return false;
+    }
+
+    try {
+      const genderCode = gender === 'male' ? 'M' : 'F';
+      const ageValue = age || 0; // Use 0 if age not provided
+      const payload = `PROFILE:${genderCode},${ageValue},${heightInches},${weightLbs}`;
+      console.log('📤 Sending profile payload:', payload);
+
+      // Encode to base64
+      const encoded = Buffer.from(payload, 'utf-8').toString('base64');
+      
+      // Write to RX characteristic (device receives from us)
+      await this.device.writeCharacteristicWithResponseForService(
+        SERVICE_UUID,
+        RX_CHAR_UUID,
+        encoded
+      );
+
+      console.log('✅ Profile sent successfully');
+      return true;
+    } catch (error) {
+      console.log('❌ Failed to send profile:', error);
+      return false;
+    }
+  }
+
   destroy(): void {
     console.log('🗑️ Destroying BLE manager...');
     if (this.subscription) {

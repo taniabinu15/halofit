@@ -53,7 +53,7 @@ export default function WorkoutHistoryScreen() {
     
     return (
       <TouchableOpacity 
-        key={workout.id} 
+        key={`${workout.id}_${index}`} 
         style={styles.workoutCard}
         onPress={() => toggleWorkoutDetails(workout.id)}
         activeOpacity={0.7}

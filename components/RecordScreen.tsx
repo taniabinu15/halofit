@@ -10,6 +10,7 @@ export default function RecordScreen() {
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isPairing, setIsPairing] = useState(false);
+  const [isSavingWorkout, setIsSavingWorkout] = useState(false);
   const [currentBleData, setCurrentBleData] = useState<BLEData | null>(null);
   const [workoutData, setWorkoutData] = useState<BLEData[]>([]);
   const [workoutStartTime, setWorkoutStartTime] = useState<number>(0);
@@ -20,7 +21,7 @@ export default function RecordScreen() {
   const isWorkoutActiveRef = useRef(false); // Track workout state for BLE callback
   const baselineSteps = useRef<number>(0); // Store baseline steps at workout start
   const baselineCalories = useRef<number>(0); // Store baseline calories at workout start
-  const { saveWorkout, isFirebaseReady } = useWorkoutData();
+  const { saveWorkout, isFirebaseReady, userProfile } = useWorkoutData();
 
   // Setup BLE callbacks once
   useEffect(() => {
@@ -49,13 +50,32 @@ export default function RecordScreen() {
       }
     });
 
-    bleManager.current.setOnConnectionChange((connected) => {
+    bleManager.current.setOnConnectionChange(async (connected) => {
       console.log('🔌 Connection changed:', connected);
       setIsConnected(connected);
       setIsPairing(false);
 
       if (connected) {
         Alert.alert('✅ Connected!', 'HaloFit Headband is ready to track your workout.');
+        
+        // Auto-send user profile if available
+        if (userProfile) {
+          console.log('📤 Auto-sending user profile to device...');
+          const success = await bleManager.current.sendUserProfile(
+            userProfile.gender,
+            userProfile.age,
+            userProfile.heightInches,
+            userProfile.weightLbs
+          );
+          
+          if (success) {
+            console.log('✅ Profile synced to device successfully');
+          } else {
+            console.log('⚠️ Failed to sync profile to device');
+          }
+        } else {
+          console.log('ℹ️ No user profile to sync');
+        }
       }
     });
 
@@ -66,7 +86,7 @@ export default function RecordScreen() {
       }
       bleManager.current.destroy();
     };
-  }, []);
+  }, [userProfile]);
 
   // Monitor connection during workout
   useEffect(() => {
@@ -141,7 +161,14 @@ export default function RecordScreen() {
   };
 
   const handleStopWorkout = async () => {
+    // Prevent duplicate saves
+    if (isSavingWorkout) {
+      console.log('⚠️ Already saving workout, ignoring duplicate request');
+      return;
+    }
+
     console.log('⏹️ Stopping workout');
+    setIsSavingWorkout(true); // Set flag to prevent duplicate saves
     console.log(`🔥 Firebase status before save: ${isFirebaseReady ? 'READY' : 'NOT READY'}`);
     console.log(`📊 Workout data points collected: ${workoutData.length}`);
     console.log(`💓 Current BLE data:`, currentBleData);
@@ -161,8 +188,11 @@ export default function RecordScreen() {
         ? Math.round(heartRates.reduce((sum, hr) => sum + hr, 0) / heartRates.length)
         : 0;
 
+      // Generate unique ID using timestamp + random component to avoid duplicates
+      const uniqueId = `workout_${endTime}_${Math.random().toString(36).substr(2, 9)}`;
+
       const workoutSession: WorkoutSession = {
-        id: `workout_${endTime}`,
+        id: uniqueId,
         startTime: workoutStartTime,
         endTime: endTime,
         duration: duration,
@@ -198,6 +228,7 @@ export default function RecordScreen() {
     isWorkoutActiveRef.current = false; // Update ref for BLE callback
     setWorkoutData([]);
     setElapsedTime(0);
+    setIsSavingWorkout(false); // Reset saving flag
   };
 
   return (
@@ -304,11 +335,14 @@ export default function RecordScreen() {
 
           {/* Stop Button */}
           <TouchableOpacity 
-            style={styles.stopButton}
+            style={[styles.stopButton, isSavingWorkout && styles.disabledButton]}
             onPress={handleStopWorkout}
+            disabled={isSavingWorkout}
           >
             <Ionicons name="stop-circle" size={26} color={HaloFitColors.white} />
-            <Text style={styles.stopButtonText}>Stop Workout</Text>
+            <Text style={styles.stopButtonText}>
+              {isSavingWorkout ? 'Saving...' : 'Stop Workout'}
+            </Text>
           </TouchableOpacity>
         </>
       )}

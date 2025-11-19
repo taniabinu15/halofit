@@ -4,6 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BLEData } from './HaloFitBLE';
 import { initFirebaseAuth, saveWorkoutToFirebase, syncLocalWorkoutsToFirebase, fetchWorkoutsFromFirebase, updateWorkoutNameInFirebase, fetchGlobalStatsFromFirebase, fetchWeeklyWorkoutsFromAllUsers, fetchAllWorkoutsFromAllUsers } from '../services/firebaseService';
 
+export interface UserProfile {
+  gender: 'male' | 'female';
+  age?: number;  // Optional for backward compatibility
+  heightInches: number;
+  weightLbs: number;
+}
+
 export interface WorkoutSession {
   id: string;
   name?: string;              // Optional workout name
@@ -32,6 +39,7 @@ interface WorkoutDataContextType {
   workoutHistory: WorkoutSession[];
   weeklyWorkouts: WorkoutSession[];
   allWorkouts: WorkoutSession[];
+  userProfile: UserProfile | null;
   saveWorkout: (session: WorkoutSession) => Promise<void>;
   refreshStats: () => Promise<void>;
   refreshGlobalStats: () => Promise<void>;
@@ -40,16 +48,19 @@ interface WorkoutDataContextType {
   isFirebaseReady: boolean;
   syncToFirebase: () => Promise<void>;
   updateWorkoutName: (workoutId: string, newName: string) => Promise<void>;
+  saveUserProfile: (profile: UserProfile) => Promise<void>;
 }
 
 const WorkoutDataContext = createContext<WorkoutDataContextType | undefined>(undefined);
 
 const STORAGE_KEY = '@halofit_workouts';
+const PROFILE_KEY = '@halofit_user_profile';
 
 export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutSession[]>([]);
   const [weeklyWorkouts, setWeeklyWorkouts] = useState<WorkoutSession[]>([]);
   const [allWorkouts, setAllWorkouts] = useState<WorkoutSession[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [workoutStats, setWorkoutStats] = useState<WorkoutStats>({
     totalWorkouts: 0,
     totalDuration: 0,
@@ -68,6 +79,7 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   useEffect(() => {
     loadWorkouts();
+    loadUserProfile();
     initializeFirebase();
   }, []);
 
@@ -118,6 +130,30 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
     } catch (error) {
       console.error('Failed to load workouts:', error);
+    }
+  };
+
+  const loadUserProfile = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(PROFILE_KEY);
+      if (stored) {
+        const profile: UserProfile = JSON.parse(stored);
+        setUserProfile(profile);
+        console.log('✅ User profile loaded:', profile);
+      }
+    } catch (error) {
+      console.error('Failed to load user profile:', error);
+    }
+  };
+
+  const saveUserProfile = async (profile: UserProfile) => {
+    try {
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      setUserProfile(profile);
+      console.log('✅ User profile saved:', profile);
+    } catch (error) {
+      console.error('❌ Failed to save user profile:', error);
+      throw error;
     }
   };
 
@@ -285,7 +321,7 @@ export const WorkoutDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   return (
-    <WorkoutDataContext.Provider value={{ workoutStats, globalStats, workoutHistory, weeklyWorkouts, allWorkouts, saveWorkout, refreshStats, refreshGlobalStats, refreshWeeklyWorkouts, refreshAllWorkouts, isFirebaseReady, syncToFirebase, updateWorkoutName }}>
+    <WorkoutDataContext.Provider value={{ workoutStats, globalStats, workoutHistory, weeklyWorkouts, allWorkouts, userProfile, saveWorkout, refreshStats, refreshGlobalStats, refreshWeeklyWorkouts, refreshAllWorkouts, isFirebaseReady, syncToFirebase, updateWorkoutName, saveUserProfile }}>
       {children}
     </WorkoutDataContext.Provider>
   );

@@ -134,7 +134,7 @@ export default function ActivityScreen() {
         workoutHistory={weeklyWorkouts}
         metricType="duration"
         title="Exercise"
-        color={HaloFitColors.primaryLight}
+        color={HaloFitColors.accent}
         unit="min"
       />
       
@@ -142,7 +142,7 @@ export default function ActivityScreen() {
         workoutHistory={weeklyWorkouts}
         metricType="calories"
         title="Active Calories"
-        color={HaloFitColors.primary}
+        color={HaloFitColors.accent}
         unit="cal"
       />
 
@@ -234,7 +234,7 @@ export default function ActivityScreen() {
             <Text style={styles.workoutCount}>({weeklyWorkouts.length} this week)</Text>
           </View>
           {(showAllWorkouts ? weeklyWorkouts : weeklyWorkouts.slice(0, 5)).map((workout, index) => (
-            <View key={workout.id} style={styles.recentWorkoutItem}>
+            <View key={`${workout.id}_${index}`} style={styles.recentWorkoutItem}>
               <View style={styles.recentWorkoutLeft}>
                 <TouchableOpacity 
                   style={styles.recentWorkoutIcon}

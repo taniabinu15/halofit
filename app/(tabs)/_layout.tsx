@@ -53,18 +53,32 @@ export default function TabLayout() {
           title: 'Activity',
           tabBarIcon: ({ color }) => <TabBarIcon name="heart" color={color} />,
           headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={22}
-                    color={HaloFitColors.white}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+            <>
+              <Link href="/modal" asChild>
+                <Pressable>
+                  {({ pressed }) => (
+                    <FontAwesome
+                      name="info-circle"
+                      size={22}
+                      color={HaloFitColors.white}
+                      style={{ marginRight: 12, opacity: pressed ? 0.5 : 1 }}
+                    />
+                  )}
+                </Pressable>
+              </Link>
+              <Link href="/login" asChild>
+                <Pressable>
+                  {({ pressed }) => (
+                    <FontAwesome
+                      name="sign-in"
+                      size={22}
+                      color={HaloFitColors.white}
+                      style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
+                    />
+                  )}
+                </Pressable>
+              </Link>
+            </>
           ),
         }}
       />

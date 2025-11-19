@@ -5,7 +5,8 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
-import { WorkoutDataProvider } from '@/components/WorkoutDataContext'; // 👈 ADD THIS LINE
+import { WorkoutDataProvider } from '@/components/WorkoutDataContext'; // 👈 workouts state
+import { AuthProvider } from '@/components/AuthContext'; // 👈 auth state
 import { useColorScheme } from '@/components/useColorScheme';
 
 
@@ -52,12 +53,15 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-       <WorkoutDataProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        </Stack>
-      </WorkoutDataProvider>
+       <AuthProvider>
+         <WorkoutDataProvider>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="login" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          </Stack>
+        </WorkoutDataProvider>
+       </AuthProvider>
     </ThemeProvider>
   );
 }
